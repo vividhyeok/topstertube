@@ -1,7 +1,13 @@
 document.addEventListener('DOMContentLoaded', () => {
     const gridContainer = document.getElementById('grid-container');
     const trackList = document.getElementById('track-list');
-    const params = new URLSearchParams(window.location.search);
+    
+    // Fix common URL copy-paste errors (converting &amp; back to &)
+    let queryString = window.location.search;
+    if (queryString.includes('&amp;')) {
+        queryString = queryString.replace(/&amp;/g, '&');
+    }
+    const params = new URLSearchParams(queryString);
 
     // 1. Get Grid Size
     const w = parseInt(params.get('w')) || 3;
