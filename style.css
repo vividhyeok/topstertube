@@ -31,11 +31,12 @@ body {
     padding-top: 100%; /* 1:1 Aspect Ratio */
     background-color: #1e1e1e;
     overflow: hidden;
-    display: block; /* For <a> tag */
+    display: block;
     text-decoration: none;
+    cursor: pointer; /* Clickable */
 }
 
-.grid-item img {
+.grid-item img, .grid-item iframe {
     position: absolute;
     top: 0;
     left: 0;
@@ -43,6 +44,7 @@ body {
     height: 100%;
     object-fit: cover; /* Crop to square */
     transition: transform 0.2s;
+    border: none;
 }
 
 .grid-item:hover img {

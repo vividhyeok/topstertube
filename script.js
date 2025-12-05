@@ -23,10 +23,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const linkParam = params.get(`link${i}`);
         
         // Create Grid Item
-        const gridItem = document.createElement('a');
+        const gridItem = document.createElement('div'); // Changed to div
         gridItem.className = 'grid-item';
-        gridItem.target = '_blank'; // Open in new tab
-
+        
         // Create List Item
         const listItem = document.createElement('li');
         const listLink = document.createElement('a');
@@ -46,12 +45,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}${startSeconds ? '&t=' + startSeconds : ''}`;
             const thumbUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 
-            // Setup Grid Item
-            gridItem.href = youtubeUrl;
+            // Setup Grid Item (Click to Play)
             const img = document.createElement('img');
             img.src = thumbUrl;
             img.alt = `Track ${i}`;
             gridItem.appendChild(img);
+
+            gridItem.addEventListener('click', () => {
+                const iframe = document.createElement('iframe');
+                iframe.src = `https://www.youtube.com/embed/${videoId}?start=${startSeconds}&autoplay=1&playsinline=1`;
+                iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+                iframe.allowFullscreen = true;
+                gridItem.innerHTML = ''; // Remove image
+                gridItem.appendChild(iframe);
+            });
 
             // Setup List Item
             listLink.href = youtubeUrl;
@@ -77,11 +84,23 @@ async function fetchTitle(videoId, element, index) {
     try {
         const response = await fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${videoId}`);
         const data = await response.json();
+        
         if (data.title) {
-            element.textContent = data.title;
+            let artist = data.author_name || '';
+            // Remove " - Topic" suffix if present
+            if (artist.endsWith(' - Topic')) {
+                artist = artist.replace(' - Topic', '');
+            }
+            
+            // Format: "Number. Artist - Title"
+            // If artist is empty, just show title
+            const text = artist ? `${index}. ${artist} - ${data.title}` : `${index}. ${data.title}`;
+            
+            element.textContent = text;
+            
             // Also update alt text for accessibility
             const gridImg = document.querySelectorAll('.grid-item img')[index - 1];
-            if (gridImg) gridImg.alt = data.title;
+            if (gridImg) gridImg.alt = text;
         }
     } catch (error) {
         console.error('Failed to fetch title for', videoId, error);
