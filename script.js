@@ -34,7 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const iframe = document.createElement('iframe');
             // Construct YouTube Embed URL
             iframe.src = `https://www.youtube.com/embed/${videoId}?start=${startSeconds}&playsinline=1`;
-            iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+            // Removed 'autoplay' to reduce permission warnings
+            iframe.allow = "accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
             iframe.allowFullscreen = true;
 
             wrapper.appendChild(iframe);

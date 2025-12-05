@@ -31,10 +31,12 @@ body {
 .video-wrapper iframe {
     position: absolute;
     top: 0;
-    left: 0;
-    width: 100%;
+    left: 50%; /* Center horizontally */
+    width: 177.77%; /* 16:9 aspect ratio width relative to 1:1 height (100% * 16/9) */
     height: 100%;
+    transform: translateX(-50%); /* Center alignment */
     border: none;
+    pointer-events: auto; /* Ensure clickable */
 }
 
 /* Empty cell styling */
