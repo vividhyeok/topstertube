@@ -92,9 +92,9 @@ async function fetchTitle(videoId, element, index) {
                 artist = artist.replace(' - Topic', '');
             }
             
-            // Format: "Number. Artist - Title"
+            // Format: "Artist - Title" (Number is handled by CSS)
             // If artist is empty, just show title
-            const text = artist ? `${index}. ${artist} - ${data.title}` : `${index}. ${data.title}`;
+            const text = artist ? `${artist} - ${data.title}` : data.title;
             
             element.textContent = text;
             
@@ -105,4 +105,29 @@ async function fetchTitle(videoId, element, index) {
     } catch (error) {
         console.error('Failed to fetch title for', videoId, error);
     }
+}
+
+// Sync List Height and Font Size with Grid
+const gridContainer = document.getElementById('grid-container');
+const listContainer = document.querySelector('.list-container');
+const trackList = document.getElementById('track-list');
+
+const resizeObserver = new ResizeObserver(entries => {
+    for (let entry of entries) {
+        const height = entry.contentRect.height;
+        if (height > 0) {
+            // 1. Sync Height: List max-height = Grid height
+            listContainer.style.maxHeight = `${height}px`;
+            
+            // 2. Dynamic Font Size: Scale based on grid height
+            // Base size calculation: height / 25 (adjust divisor to tune size)
+            // Min 12px, Max 18px to prevent too small/large text
+            const fontSize = Math.max(12, Math.min(18, height / 25));
+            trackList.style.fontSize = `${fontSize}px`;
+        }
+    }
+});
+
+if (gridContainer) {
+    resizeObserver.observe(gridContainer);
 }
