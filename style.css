@@ -1,0 +1,46 @@
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #121212; /* Dark Theme */
+    color: #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+.grid-container {
+    display: grid;
+    width: 100%;
+    height: 100vh; /* Full viewport height */
+    gap: 4px; /* Small gap between grid items */
+    box-sizing: border-box;
+    padding: 4px;
+    align-content: center; /* Center grid content vertically if it doesn't fill height */
+}
+
+.video-wrapper {
+    position: relative;
+    width: 100%;
+    padding-top: 100%; /* Force 1:1 Aspect Ratio */
+    background-color: #000;
+    overflow: hidden;
+}
+
+.video-wrapper iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* Empty cell styling */
+.video-wrapper:empty {
+    background-color: #1e1e1e;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%23333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>');
+    background-repeat: no-repeat;
+    background-position: center;
+}
