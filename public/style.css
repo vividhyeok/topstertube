@@ -43,24 +43,25 @@ html {
     display: flex;
     flex-direction: row;
     gap: 30px;
-    /* Reduced gap to give more space to grid */
     width: 100%;
     height: 100vh;
     max-width: 100%;
-    /* Stretch to full width if needed */
     align-items: center;
+    justify-content: center;
     padding: 20px;
     box-sizing: border-box;
 }
 
-/* Left: Grid */
+/* Left: Grid - Prioritize for maximum size */
 .grid-container {
     display: grid;
     gap: 8px;
-    flex: 0 0 clamp(400px, 65vw, 950px);
-    /* Aggressive size: up to 65% of viewport width or 950px */
-    max-width: 100%;
+    flex: 1;
+    /* Take all available space */
+    max-width: calc(100vh - 100px);
+    /* Constrain by height to keep square visible */
     aspect-ratio: 1/1;
+    min-width: 400px;
 }
 
 .grid-container.classic-layout {
@@ -117,9 +118,9 @@ html {
     border: none;
 }
 
-/* Right: List */
+/* Right: List - Fixed width on Desktop to allow Grid to grow */
 .list-container {
-    flex: 1;
+    flex: 0 0 350px;
     min-width: 0;
     max-height: 100%;
     overflow-y: auto;
@@ -152,7 +153,7 @@ html {
 #track-list li a {
     color: #eee;
     text-decoration: none;
-    font-size: 1em;
+    font-size: 0.95em;
     font-weight: 300;
     display: block;
     width: 100%;
@@ -160,7 +161,7 @@ html {
     /* Ensure left alignment */
     white-space: normal;
     /* Allow wrapping */
-    word-break: break-word;
+    word-break: break-all;
     /* Ensure URLs or long words don't overflow */
     line-height: 1.4;
     padding-right: 10px;
@@ -206,6 +207,7 @@ html {
     .list-container {
         flex: 1;
         width: 100%;
+        max-width: 100%;
         overflow-y: auto;
         max-height: none !important;
         /* Override React sync on mobile */
