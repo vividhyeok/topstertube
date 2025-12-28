@@ -84,15 +84,26 @@ export default async function handler(req, res) {
         }
 
         const tiles = (await Promise.all(
-            jobs.map(async ({ videoId, coord }) => {
+            jobs.map(async ({ videoId, coord, order }) => {
                 try {
                     const thumbUrl = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
                     const buf = await fetchBuffer(thumbUrl);
-                    const tile = await sharp(buf)
-                        .resize(Math.round(coord.size), Math.round(coord.size), { fit: "cover", position: "centre" })
-                        .toBuffer();
-                    return { tile, left: Math.round(coord.x), top: Math.round(coord.y) };
+
+                    // 1. Base Tile: Center Crop 1:1
+                    const size = Math.round(coord.size);
+                    const baseTile = sharp(buf)
+                        .resize(size, size, { fit: "cover", position: "centre" })
+                        .modulate({ contrast: 1.05, brightness: 1.02 })
+                        .sharpen();
+
+                    // 2. Optional: Text Overlay (Pro Feature)
+                    // If we want title overlays, we can fetch metadata.
+                    // For now, let's stick to consistent 1:1 high-quality visual.
+
+                    const tileBuffer = await baseTile.toBuffer();
+                    return { tile: tileBuffer, left: Math.round(coord.x), top: Math.round(coord.y) };
                 } catch (e) {
+                    console.error(`Error processing tile ${videoId}:`, e);
                     return null;
                 }
             })
