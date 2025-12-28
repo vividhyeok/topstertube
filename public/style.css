@@ -4,42 +4,37 @@ html {
     padding: 0;
     height: 100%;
     width: 100%;
-    background-color: #0f0f0f;
+    background-color: #000000;
     color: #ffffff;
     font-family: 'Pretendard', -apple-system, system-ui, sans-serif;
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow: hidden;
 }
 
-/* Main Flex Layout */
+/* Main Container: Responsive Layout */
 .main-container {
     display: flex;
     flex-direction: row;
-    gap: 30px;
+    /* Default PC */
+    gap: 40px;
     width: 100%;
     height: 100%;
     max-width: 1400px;
     align-items: center;
-    background-color: #1a1a1a;
-    padding: 30px;
+    padding: 40px;
     box-sizing: border-box;
-    border-radius: 12px;
 }
 
-/* Base Grid */
+/* Left: Grid */
 .grid-container {
     display: grid;
-    gap: 6px;
-    flex: 0 0 45%;
-    max-width: 600px;
-    max-height: 100%;
+    gap: 8px;
+    flex: 0 0 500px;
+    max-width: 100%;
     aspect-ratio: 1/1;
-    align-self: center;
 }
 
-/* Tiered Classic Layout */
 .grid-container.classic-layout {
     display: flex;
     flex-wrap: wrap;
@@ -49,14 +44,12 @@ html {
 
 .grid-item {
     position: relative;
-    background-color: #1e1e1e;
+    background-color: #111;
     overflow: hidden;
     cursor: pointer;
-    transition: transform 0.2s;
-    border-radius: 4px;
+    border-radius: 2px;
 }
 
-/* Regular Grid Item (Square) */
 .grid-container:not(.classic-layout) .grid-item {
     padding-top: 100%;
 }
@@ -91,70 +84,60 @@ html {
     border: none;
 }
 
-.grid-item:hover {
-    transform: scale(1.05);
-    z-index: 10;
-    box-shadow: 0 0 15px rgba(62, 166, 255, 0.4);
-}
-
-/* List Styling */
+/* Right: List */
 .list-container {
     flex: 1;
     min-width: 0;
     max-height: 100%;
     overflow-y: auto;
-    padding-right: 15px;
 }
 
 #track-list {
     margin: 0;
     padding: 0;
     list-style: none;
-    counter-reset: t-count;
+    counter-reset: track;
 }
 
 #track-list li {
-    margin-bottom: 8px;
-    counter-increment: t-count;
+    margin-bottom: 12px;
+    counter-increment: track;
     display: flex;
     align-items: center;
+    border-bottom: 1px solid #111;
+    padding-bottom: 12px;
 }
 
 #track-list li::before {
-    content: counter(t-count) ".";
-    color: #555;
-    font-weight: 800;
-    width: 35px;
-    text-align: right;
-    margin-right: 12px;
+    content: counter(track);
+    color: #444;
+    font-weight: 400;
+    width: 30px;
+    font-size: 0.9em;
 }
 
 #track-list li a {
     color: #eee;
     text-decoration: none;
-    padding: 10px 14px;
-    background: #252525;
-    border-radius: 8px;
+    font-size: 1.1em;
+    font-weight: 300;
     display: block;
     width: 100%;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    transition: background 0.2s;
 }
 
 #track-list li a:hover {
-    background: #3ea6ff;
-    color: #000;
+    color: #3ea6ff;
 }
 
 .empty-li {
-    color: #444;
-    padding: 10px 14px;
+    color: #222;
 }
 
-/* Responsive */
-@media (max-width: 900px) {
+/* Mobile Responsive */
+@media (max-width: 850px) {
 
     body,
     html {
@@ -164,13 +147,27 @@ html {
 
     .main-container {
         flex-direction: column;
+        /* Stacked */
         height: auto;
-        padding: 15px;
+        padding: 20px;
+        gap: 20px;
     }
 
     .grid-container {
         flex: none;
         width: 100%;
-        max-width: none;
+        max-width: 450px;
+        margin: 0 auto;
+    }
+
+    .list-container {
+        width: 100%;
+        height: auto;
+        overflow-y: visible;
+    }
+
+    #track-list li {
+        padding-bottom: 8px;
+        margin-bottom: 8px;
     }
 }
