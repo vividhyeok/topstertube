@@ -13,7 +13,7 @@ export default async function handler(req, res) {
         let layoutCoords = [];
 
         if (theme === "classic") {
-            // "Classic 42" Hierarchy
+            // "Classic 42" Hierarchy: 5x2 (Large), 6x2 (Medium), 10x2 (Small)
             // Lower default cellBase for classic to avoid timeouts (42 items is a lot)
             cellBase = clampInt(q.cell, 100, 400, 180);
 
@@ -24,24 +24,9 @@ export default async function handler(req, res) {
             const mediumCell = (totalWidth - 5 * gap) / 6;
 
             width = totalWidth;
-
-            let currentY = 0;
-            // Large rows (2 rows of 5)
-            for (let r = 0; r < 2; r++) {
-                for (let c = 0; c < 5; c++) {
-                    layoutCoords.push({ x: c * (largeCell + gap), y: currentY, size: largeCell });
-                }
-                currentY += largeCell + gap;
-            }
-            // Medium rows (2 rows of 6)
-            for (let r = 0; r < 2; r++) {
-                for (let c = 0; c < 6; r + c < 22 ? c++ : c++) { // Just making sure the loop is clean
-                    // Wait, the loop condition was fine r < 2
-                }
-            }
-            // Let's rewrite the loops to be absolutely clear and correct indices
             layoutCoords = [];
-            currentY = 0;
+            let currentY = 0;
+
             // 0-9: Large (5x2)
             for (let i = 0; i < 10; i++) {
                 const r = Math.floor(i / 5);
@@ -49,6 +34,7 @@ export default async function handler(req, res) {
                 layoutCoords.push({ x: c * (largeCell + gap), y: r * (largeCell + gap), size: largeCell });
             }
             currentY = 2 * (largeCell + gap);
+
             // 10-21: Medium (6x2)
             for (let i = 0; i < 12; i++) {
                 const r = Math.floor(i / 6);
@@ -56,6 +42,7 @@ export default async function handler(req, res) {
                 layoutCoords.push({ x: c * (mediumCell + gap), y: currentY + r * (mediumCell + gap), size: mediumCell });
             }
             currentY += 2 * (mediumCell + gap);
+
             // 22-41: Small (10x2)
             for (let i = 0; i < 20; i++) {
                 const r = Math.floor(i / 10);
