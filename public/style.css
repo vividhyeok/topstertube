@@ -42,26 +42,30 @@ html {
 .main-container {
     display: flex;
     flex-direction: row;
-    gap: 30px;
+    gap: 20px;
+    /* Reduced gap */
     width: 100%;
     height: 100vh;
     max-width: 100%;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    padding: 10px;
+    /* Minimal padding */
     box-sizing: border-box;
+    overflow: hidden;
+    /* Prevent page scroll */
 }
 
-/* Left: Grid - Prioritize for maximum size */
+/* Left: Grid - Prioritize for maximum scale */
 .grid-container {
     display: grid;
     gap: 8px;
     flex: 1;
-    /* Take all available space */
-    max-width: calc(100vh - 100px);
-    /* Constrain by height to keep square visible */
+    max-width: calc(100vh - 20px);
+    /* Use almost full height */
+    max-height: calc(100vh - 20px);
     aspect-ratio: 1/1;
-    min-width: 400px;
+    min-width: 0;
 }
 
 .grid-container.classic-layout {
@@ -118,9 +122,10 @@ html {
     border: none;
 }
 
-/* Right: List - Fixed width on Desktop to allow Grid to grow */
+/* Right: List - Fixed width on Desktop */
 .list-container {
-    flex: 0 0 350px;
+    flex: 0 0 300px;
+    /* Slightly narrower */
     min-width: 0;
     max-height: 100%;
     overflow-y: auto;
@@ -188,10 +193,9 @@ html {
     .main-container {
         flex-direction: column;
         height: 100vh;
-        padding: 5px;
-        /* Minimal padding */
-        padding-top: 10px;
-        gap: 8px;
+        padding: 0;
+        /* Zero padding for mobile edges */
+        gap: 5px;
         justify-content: flex-start;
         align-items: center;
     }
@@ -199,9 +203,8 @@ html {
     .grid-container {
         flex: 0 0 auto;
         width: 100%;
-        max-width: 100%;
-        /* Maximize grid on mobile */
-        margin: 0 auto;
+        max-width: 100vw;
+        margin: 0;
     }
 
     .list-container {
