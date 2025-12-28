@@ -15,7 +15,7 @@ export default async function handler(req, res) {
         if (theme === "classic") {
             // "Classic 42" Hierarchy: 5x2 (Large), 6x2 (Medium), 10x2 (Small)
             // Lower default cellBase for classic to avoid timeouts (42 items is a lot)
-            cellBase = clampInt(q.cell, 100, 400, 180);
+            cellBase = clampInt(q.cell, 80, 240, 120);
 
             const smallCell = cellBase;
             const totalWidth = 10 * smallCell + 9 * gap;
