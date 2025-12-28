@@ -130,7 +130,7 @@ export default async function handler(req, res) {
                     input: Buffer.from(`
                         <svg width="${Math.round(width)}" height="40">
                             <rect width="100%" height="100%" fill="#000000" />
-                            <text x="50%" y="25" font-family="Pretendard, sans-serif" font-size="18" fill="#ffffff" text-anchor="middle" font-weight="500">
+                            <text x="50%" y="25" font-family="sans-serif" font-size="16" fill="#ffffff" text-anchor="middle" font-weight="bold">
                                 TopsterTube - 이미지를 클릭하여 감상하세요
                             </text>
                         </svg>
