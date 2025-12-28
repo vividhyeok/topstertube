@@ -128,8 +128,15 @@ function ListItem({ link, index }) {
 
 export default function Home() {
     return (
-        <Suspense fallback={<div style={{ color: 'white', padding: '20px' }}>Loading Topster...</div>}>
-            <PlayerContent />
-        </Suspense>
+        <>
+            <Head>
+                <title>Topster Highlight Player</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                <link rel="stylesheet" href="/style.css" />
+            </Head>
+            <Suspense fallback={<div style={{ color: 'white', padding: '20px' }}>Loading Topster...</div>}>
+                <PlayerContent />
+            </Suspense>
+        </>
     );
 }
