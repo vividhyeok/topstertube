@@ -16,10 +16,9 @@ html {
 .main-container {
     display: flex;
     flex-direction: row;
-    /* Default PC */
     gap: 40px;
     width: 100%;
-    height: 100%;
+    height: 100vh;
     max-width: 1400px;
     align-items: center;
     padding: 40px;
@@ -146,29 +145,33 @@ html {
 
     body,
     html {
-        overflow-y: auto;
-        display: block;
+        overflow: hidden;
+        /* Prevent body scroll, use container scroll */
     }
 
     .main-container {
         flex-direction: column;
-        /* Stacked */
-        height: auto;
-        padding: 20px;
-        gap: 20px;
+        height: 100vh;
+        padding: 10px;
+        gap: 15px;
+        justify-content: flex-start;
+        align-items: center;
     }
 
     .grid-container {
-        flex: none;
+        flex: 0 0 auto;
         width: 100%;
-        max-width: 450px;
+        max-width: 400px;
+        /* Limit size on mobile for better visibility */
         margin: 0 auto;
     }
 
     .list-container {
+        flex: 1;
         width: 100%;
-        height: auto;
-        overflow-y: visible;
+        overflow-y: auto;
+        max-height: none !important;
+        /* Override React sync on mobile */
     }
 
     #track-list li {

@@ -7,6 +7,9 @@ function PlayerContent() {
     const [links, setLinks] = useState([]);
     const [gridConfig, setGridConfig] = useState({ w: 3, h: 3, theme: 'grid' });
 
+    const gridRef = import.meta.env ? { current: null } : null; // Next.js SSR safety
+    const [gridHeight, setGridHeight] = useState('auto');
+
     useEffect(() => {
         const theme = searchParams.get('theme') || 'grid';
         let w = parseInt(searchParams.get('w')) || 3;
@@ -35,6 +38,25 @@ function PlayerContent() {
         setGridConfig({ w, h, theme });
     }, [searchParams]);
 
+    // Height sync logic
+    useEffect(() => {
+        const gridEl = document.querySelector('.grid-container');
+        if (!gridEl) return;
+
+        const observer = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                if (window.innerWidth > 850) {
+                    setGridHeight(`${entry.contentRect.height}px`);
+                } else {
+                    setGridHeight('auto');
+                }
+            }
+        });
+
+        observer.observe(gridEl);
+        return () => observer.disconnect();
+    }, []);
+
     return (
         <div className="main-container">
             <div
@@ -45,7 +67,7 @@ function PlayerContent() {
                     <GridItem key={i} link={link} index={i} theme={gridConfig.theme} />
                 ))}
             </div>
-            <div className="list-container">
+            <div className="list-container" style={{ maxHeight: gridHeight }}>
                 <ol id="track-list">
                     {links.map((link, i) => (
                         <ListItem key={i} link={link} index={i} />
