@@ -68,7 +68,7 @@ export default async function handler(req, res) {
         const base = sharp({
             create: {
                 width: Math.round(width),
-                height: Math.round(height) + 40, // Add space for CTA footer
+                height: Math.round(height),
                 channels: 3,
                 background: bg
             }
@@ -123,22 +123,36 @@ export default async function handler(req, res) {
             })
         )).filter(t => t !== null);
 
+        const path = await import("path");
+        const fs = await import("fs");
+        const footerPath = path.join(process.cwd(), "public", "footer.png");
+        let footerOverlay = null;
+
+        if (fs.existsSync(footerPath)) {
+            const footerBuf = fs.readFileSync(footerPath);
+            footerOverlay = {
+                input: await sharp(footerBuf).resize(Math.round(width), 40, { fit: "contain", background: "#000000" }).toBuffer(),
+                left: 0,
+                top: Math.round(height)
+            };
+        } else {
+            // Fallback to SVG if file not found (though squares might appear)
+            footerOverlay = {
+                input: Buffer.from(`
+                    <svg width="${Math.round(width)}" height="40" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="100%" height="100%" fill="#000000" />
+                        <text x="50%" y="25" font-family="sans-serif" font-size="16" fill="#ffffff" text-anchor="middle" font-weight="bold">
+                            TopsterTube - 이미지를 클릭하여 감상하세요
+                        </text>
+                    </svg>
+                `),
+                left: 0,
+                top: Math.round(height)
+            };
+        }
+
         const out = await base
-            .composite([
-                ...tiles.map(t => ({ input: t.tile, left: t.left, top: t.top })),
-                {
-                    input: Buffer.from(`
-                        <svg width="${Math.round(width)}" height="40" xmlns="http://www.w3.org/2000/svg">
-                            <rect width="100%" height="100%" fill="#000000" />
-                            <text x="50%" y="25" font-family="Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, sans-serif" font-size="16" fill="#ffffff" text-anchor="middle" font-weight="bold">
-                                TopsterTube - 이미지를 클릭하여 감상하세요
-                            </text>
-                        </svg>
-                    `),
-                    left: 0,
-                    top: Math.round(height)
-                }
-            ])
+            .composite(tiles.map(t => ({ input: t.tile, left: t.left, top: t.top })))
             .png()
             .toBuffer();
 
