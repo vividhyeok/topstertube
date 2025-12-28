@@ -107,7 +107,7 @@ function GridItem({ link, index, theme }) {
 }
 
 function ListItem({ link, index }) {
-    const [text, setText] = useState(`Track ${index + 1}`);
+    const [text, setText] = useState('-');
 
     useEffect(() => {
         if (link) {
