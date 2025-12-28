@@ -71,6 +71,8 @@ function PlayerContent() {
         <div className="main-container">
             <div
                 className={`grid-container ${gridConfig.theme === 'classic' ? 'classic-layout' : ''}`}
+                data-theme={gridConfig.theme}
+                data-size={`${gridConfig.w}x${gridConfig.h}`}
                 style={gridConfig.theme !== 'classic' ? { gridTemplateColumns: `repeat(${gridConfig.w}, 1fr)` } : {}}
             >
                 {links.map((link, i) => (

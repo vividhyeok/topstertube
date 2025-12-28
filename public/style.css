@@ -42,32 +42,39 @@ html {
 .main-container {
     display: flex;
     flex-direction: row;
-    gap: 20px;
-    /* Reduced gap */
+    gap: 30px;
     width: 100vw;
     height: 100vh;
     max-width: 100%;
-    align-items: center;
+    align-items: flex-start;
+    /* List and Grid both starting from top */
     justify-content: center;
-    padding: 10px;
-    /* Minimal padding */
+    padding: 40px 20px;
+    /* Top-heavy padding for balance */
     box-sizing: border-box;
     overflow: hidden;
-    /* Prevent page scroll */
 }
 
 /* Left: Grid - Forces children to use its width */
 .grid-container {
     display: flex;
     flex-wrap: wrap;
-    /* Switch to flex for easier percentage control in classic */
     width: 100%;
-    flex: 1 1 auto;
-    max-width: calc(100vh - 40px);
-    max-height: calc(100vh - 40px);
+    flex: 0 1 auto;
+    /* Don't insist on growing to max width */
+    max-width: 78vh;
+    /* Conservative size for smaller grids (2x2, 3x3, 4x4) */
+    max-height: 78vh;
     aspect-ratio: 1/1;
     min-width: 0;
     margin: 0;
+}
+
+/* Larger grids: maximize footprint */
+.grid-container[data-theme="5x5"],
+.grid-container.classic-layout {
+    max-width: calc(100vh - 80px);
+    max-height: calc(100vh - 80px);
 }
 
 /* Grid Override when NOT classic (using display: grid) */
