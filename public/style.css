@@ -205,10 +205,13 @@ html {
 
     .main-container {
         flex-direction: column;
-        height: 100vh;
-        padding: 0;
-        /* Zero padding for mobile edges */
-        gap: 10px;
+        height: 100dvh;
+        /* Dynamic viewport height */
+        padding: 5px;
+        padding-top: max(10px, env(safe-area-inset-top));
+        /* Avoid clipping by notch/address bar */
+        padding-bottom: env(safe-area-inset-bottom);
+        gap: 5px;
         justify-content: flex-start;
         align-items: center;
     }

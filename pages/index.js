@@ -7,6 +7,16 @@ function PlayerContent() {
     const [links, setLinks] = useState([]);
     const [gridConfig, setGridConfig] = useState({ w: 3, h: 3, theme: 'grid' });
 
+    const [activeIdx, setActiveIdx] = useState(null);
+
+    const togglePlay = (idx) => {
+        if (activeIdx === idx) {
+            setActiveIdx(null);
+        } else {
+            setActiveIdx(idx);
+        }
+    };
+
     const gridRef = import.meta.env ? { current: null } : null; // Next.js SSR safety
     const [gridHeight, setGridHeight] = useState('auto');
 
@@ -64,13 +74,26 @@ function PlayerContent() {
                 style={gridConfig.theme !== 'classic' ? { gridTemplateColumns: `repeat(${gridConfig.w}, 1fr)` } : {}}
             >
                 {links.map((link, i) => (
-                    <GridItem key={i} link={link} index={i} theme={gridConfig.theme} />
+                    <GridItem
+                        key={i}
+                        link={link}
+                        index={i}
+                        theme={gridConfig.theme}
+                        isActive={activeIdx === i}
+                        onToggle={() => togglePlay(i)}
+                    />
                 ))}
             </div>
             <div className="list-container" style={{ maxHeight: gridHeight }}>
                 <ol id="track-list">
                     {links.map((link, i) => (
-                        <ListItem key={i} link={link} index={i} />
+                        <ListItem
+                            key={i}
+                            link={link}
+                            index={i}
+                            onToggle={() => togglePlay(i)}
+                            isActive={activeIdx === i}
+                        />
                     ))}
                 </ol>
             </div>
@@ -78,8 +101,7 @@ function PlayerContent() {
     );
 }
 
-function GridItem({ link, index, theme }) {
-    const [isPlaying, setIsPlaying] = useState(false);
+function GridItem({ link, index, theme, isActive, onToggle }) {
     const [title, setTitle] = useState(`Track ${index + 1}`);
 
     useEffect(() => {
@@ -106,8 +128,8 @@ function GridItem({ link, index, theme }) {
     if (!link) return <div className={getClassName()} style={{ backgroundColor: '#1e1e1e', cursor: 'default' }} />;
 
     return (
-        <div className={getClassName()} onClick={() => setIsPlaying(true)}>
-            {isPlaying ? (
+        <div className={getClassName()} onClick={onToggle}>
+            {isActive ? (
                 <iframe
                     src={`https://www.youtube.com/embed/${link.id}?start=${link.t}&autoplay=1&playsinline=1`}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -128,7 +150,7 @@ function GridItem({ link, index, theme }) {
     );
 }
 
-function ListItem({ link, index }) {
+function ListItem({ link, index, onToggle, isActive }) {
     const [text, setText] = useState('-');
 
     useEffect(() => {
@@ -148,9 +170,15 @@ function ListItem({ link, index }) {
     if (!link) return <li><span className="empty-li">-</span></li>;
 
     return (
-        <li>
-            <a href={`https://www.youtube.com/watch?v=${link.id}${link.t ? '&t=' + link.t : ''}`} target="_blank" rel="noreferrer">
-                {text}
+        <li style={isActive ? { backgroundColor: '#111' } : {}}>
+            <a
+                href="#"
+                onClick={(e) => {
+                    e.preventDefault();
+                    onToggle();
+                }}
+            >
+                {isActive ? `▶ ${text}` : text}
             </a>
         </li>
     );
