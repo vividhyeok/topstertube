@@ -1,5 +1,6 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Head from 'next/head';
 
 function PlayerContent() {
     const searchParams = useSearchParams();
