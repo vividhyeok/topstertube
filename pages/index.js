@@ -69,10 +69,6 @@ function PlayerContent() {
 
     return (
         <div className="main-container">
-            <header className="page-header">
-                <img src="/icons/icon32.png" alt="logo" className="header-logo" />
-                <h1>Topstertube</h1>
-            </header>
             <div
                 className={`grid-container ${gridConfig.theme === 'classic' ? 'classic-layout' : ''}`}
                 style={gridConfig.theme !== 'classic' ? { gridTemplateColumns: `repeat(${gridConfig.w}, 1fr)` } : {}}
