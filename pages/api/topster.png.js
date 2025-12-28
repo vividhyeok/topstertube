@@ -14,43 +14,55 @@ export default async function handler(req, res) {
 
         if (theme === "classic") {
             // "Classic 42" Hierarchy
-            // Row 1-2: 5 items (Large)
-            // Row 3-4: 6 items (Medium)
-            // Row 5-6: 10 items (Small)
-            // Width is fixed by 10 small items + gaps
+            // Lower default cellBase for classic to avoid timeouts (42 items is a lot)
+            cellBase = clampInt(q.cell, 100, 400, 180);
+
             const smallCell = cellBase;
             const totalWidth = 10 * smallCell + 9 * gap;
 
-            // Large cell size: (totalWidth - 4*gap) / 5
             const largeCell = (totalWidth - 4 * gap) / 5;
-            // Medium cell size: (totalWidth - 5*gap) / 6
             const mediumCell = (totalWidth - 5 * gap) / 6;
 
             width = totalWidth;
 
             let currentY = 0;
-            // Large rows
+            // Large rows (2 rows of 5)
             for (let r = 0; r < 2; r++) {
                 for (let c = 0; c < 5; c++) {
                     layoutCoords.push({ x: c * (largeCell + gap), y: currentY, size: largeCell });
                 }
                 currentY += largeCell + gap;
             }
-            // Medium rows
+            // Medium rows (2 rows of 6)
             for (let r = 0; r < 2; r++) {
-                for (let c = 0; c < 6; c++) {
-                    layoutCoords.push({ x: c * (mediumCell + gap), y: currentY, size: mediumCell });
+                for (let c = 0; c < 6; r + c < 22 ? c++ : c++) { // Just making sure the loop is clean
+                    // Wait, the loop condition was fine r < 2
                 }
-                currentY += mediumCell + gap;
             }
-            // Small rows
-            for (let r = 0; r < 2; r++) {
-                for (let c = 0; c < 10; c++) {
-                    layoutCoords.push({ x: c * (smallCell + gap), y: currentY, size: smallCell });
-                }
-                currentY += smallCell + gap;
+            // Let's rewrite the loops to be absolutely clear and correct indices
+            layoutCoords = [];
+            currentY = 0;
+            // 0-9: Large (5x2)
+            for (let i = 0; i < 10; i++) {
+                const r = Math.floor(i / 5);
+                const c = i % 5;
+                layoutCoords.push({ x: c * (largeCell + gap), y: r * (largeCell + gap), size: largeCell });
             }
-            height = currentY - gap;
+            currentY = 2 * (largeCell + gap);
+            // 10-21: Medium (6x2)
+            for (let i = 0; i < 12; i++) {
+                const r = Math.floor(i / 6);
+                const c = i % 6;
+                layoutCoords.push({ x: c * (mediumCell + gap), y: currentY + r * (mediumCell + gap), size: mediumCell });
+            }
+            currentY += 2 * (mediumCell + gap);
+            // 22-41: Small (10x2)
+            for (let i = 0; i < 20; i++) {
+                const r = Math.floor(i / 10);
+                const c = i % 10;
+                layoutCoords.push({ x: c * (smallCell + gap), y: currentY + r * (smallCell + gap), size: smallCell });
+            }
+            height = currentY + 2 * (smallCell + gap) - gap;
         } else {
             // Standard Grid
             const w = clampInt(q.w, 1, 10, 3);
