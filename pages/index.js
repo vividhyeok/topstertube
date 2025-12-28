@@ -92,7 +92,15 @@ function GridItem({ link, index, theme }) {
                     allowFullScreen
                 />
             ) : (
-                <img src={`https://img.youtube.com/vi/${link.id}/hqdefault.jpg`} alt={title} title={title} />
+                <img
+                    src={`https://img.youtube.com/vi/${link.id}/mqdefault.jpg`}
+                    alt={title}
+                    title={title}
+                    onError={(e) => {
+                        e.target.onerror = null; // Prevent infinite loop
+                        e.target.src = `https://img.youtube.com/vi/${link.id}/hqdefault.jpg`;
+                    }}
+                />
             )}
         </div>
     );

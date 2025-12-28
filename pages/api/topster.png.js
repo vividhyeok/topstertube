@@ -86,8 +86,26 @@ export default async function handler(req, res) {
         const tiles = (await Promise.all(
             jobs.map(async ({ videoId, coord, order }) => {
                 try {
-                    const thumbUrl = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
-                    const buf = await fetchBuffer(thumbUrl);
+                    // Try 16:9 sources to avoid black bars: maxresdefault -> mqdefault
+                    const sources = [
+                        `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
+                        `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,
+                        `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+                    ];
+
+                    let buf = null;
+                    for (const url of sources) {
+                        try {
+                            const res = await fetch(url);
+                            if (res.ok) {
+                                const ab = await res.arrayBuffer();
+                                buf = Buffer.from(ab);
+                                break;
+                            }
+                        } catch (e) { }
+                    }
+
+                    if (!buf) throw new Error("No image found");
 
                     // 1. Base Tile: Center Crop 1:1
                     const size = Math.round(coord.size);
@@ -95,10 +113,6 @@ export default async function handler(req, res) {
                         .resize(size, size, { fit: "cover", position: "centre" })
                         .modulate({ contrast: 1.05, brightness: 1.02 })
                         .sharpen();
-
-                    // 2. Optional: Text Overlay (Pro Feature)
-                    // If we want title overlays, we can fetch metadata.
-                    // For now, let's stick to consistent 1:1 high-quality visual.
 
                     const tileBuffer = await baseTile.toBuffer();
                     return { tile: tileBuffer, left: Math.round(coord.x), top: Math.round(coord.y) };
