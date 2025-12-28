@@ -38,6 +38,46 @@ html {
     scrollbar-color: #222222 #0a0a0a;
 }
 
+/* Page Header & Branding */
+.page-header {
+    position: fixed;
+    top: 10px;
+    left: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 1000;
+}
+
+.header-logo {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+.page-header h1 {
+    font-family: 'Inter', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #eee;
+    margin: 0;
+    letter-spacing: -0.02em;
+}
+
+/* Hide header on mobile for cleaner look if needed, or keep minimal */
+@media (max-width: 850px) {
+    .page-header {
+        position: relative;
+        top: 0;
+        left: 0;
+        padding: 15px;
+        justify-content: center;
+        width: 100%;
+        box-sizing: border-box;
+    }
+}
+
 /* Main Container: Responsive Layout */
 .main-container {
     display: flex;

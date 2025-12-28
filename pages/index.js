@@ -69,6 +69,10 @@ function PlayerContent() {
 
     return (
         <div className="main-container">
+            <header className="page-header">
+                <img src="/icons/icon32.png" alt="logo" className="header-logo" />
+                <h1>Topstertube</h1>
+            </header>
             <div
                 className={`grid-container ${gridConfig.theme === 'classic' ? 'classic-layout' : ''}`}
                 style={gridConfig.theme !== 'classic' ? { gridTemplateColumns: `repeat(${gridConfig.w}, 1fr)` } : {}}
@@ -188,11 +192,13 @@ export default function Home() {
     return (
         <>
             <Head>
-                <title>Topster Highlight Player</title>
+                <title>Topstertube - 재생 가능한 탑스터</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                <meta name="description" content="유튜브 음악으로 만드는 나만의 재생 가능한 탑스터" />
+                <link rel="icon" href="/favicon.ico" />
                 <link rel="stylesheet" href="/style.css" />
             </Head>
-            <Suspense fallback={<div style={{ color: 'white', padding: '20px' }}>Loading Topster...</div>}>
+            <Suspense fallback={<div style={{ color: 'white', padding: '20px' }}>Loading Topstertube...</div>}>
                 <PlayerContent />
             </Suspense>
         </>
