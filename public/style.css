@@ -1,0 +1,183 @@
+body {
+    margin: 0;
+    padding: 0; /* Remove padding to fit 100vh exactly */
+    background-color: #121212; /* Dark Theme */
+    color: #ffffff;
+    font-family: sans-serif;
+    height: 100vh; /* Fixed height */
+    overflow: hidden; /* Prevent body scroll */
+    box-sizing: border-box;
+    
+    /* Center content for PC */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.main-container {
+    display: flex;
+    gap: 20px; /* Reduced gap */
+    width: 100%;
+    height: 100%; /* Fill body */
+    max-width: 1200px;
+    align-items: center; /* Center vertically */
+    background-color: #181818;
+    padding: 20px; /* Reduced padding */
+    box-sizing: border-box;
+    /* Remove border-radius/shadow to fit iframe better */
+}
+
+/* Left Side: Grid */
+.grid-container {
+    display: grid;
+    gap: 4px;
+    /* Flexible width: takes 40% of container but max 500px */
+    flex: 0 0 40%; 
+    max-width: 500px;
+    /* Ensure it doesn't exceed height */
+    max-height: 100%;
+    aspect-ratio: 1/1;
+    align-self: center;
+}
+
+.grid-item {
+    position: relative;
+    width: 100%;
+    padding-top: 100%; /* 1:1 Aspect Ratio */
+    background-color: #1e1e1e;
+    overflow: hidden;
+    display: block;
+    text-decoration: none;
+    cursor: pointer; /* Clickable */
+}
+
+.grid-item img, .grid-item iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Crop to square */
+    transition: transform 0.2s;
+    border: none;
+}
+
+.grid-item:hover img {
+    transform: scale(1.05);
+    opacity: 0.9;
+}
+
+/* Right Side: List */
+.list-container {
+    flex: 1;
+    min-width: 0; /* Prevent flex overflow */
+    /* Height will be controlled by JS to match Grid */
+    height: auto; 
+    max-height: 100%;
+    overflow-y: auto; /* Scrollable list */
+    padding-right: 5px; /* Space for scrollbar */
+    align-self: center; /* Center vertically relative to grid */
+}
+
+/* Custom Scrollbar for List */
+.list-container::-webkit-scrollbar {
+    width: 6px;
+}
+.list-container::-webkit-scrollbar-track {
+    background: #1e1e1e; 
+}
+.list-container::-webkit-scrollbar-thumb {
+    background: #444; 
+    border-radius: 3px;
+}
+.list-container::-webkit-scrollbar-thumb:hover {
+    background: #555; 
+}
+
+#track-list {
+    margin: 0;
+    padding-left: 0;
+    list-style: none; /* Remove default numbers */
+    counter-reset: track-counter;
+}
+
+#track-list li {
+    margin-bottom: 12px;
+    color: #aaa;
+    counter-increment: track-counter;
+    display: flex;
+    align-items: center;
+}
+
+#track-list li::before {
+    content: counter(track-counter) ".";
+    color: #666;
+    font-weight: bold;
+    width: 30px;
+    flex-shrink: 0;
+    text-align: right;
+    margin-right: 15px;
+}
+
+#track-list li a {
+    color: #ddd;
+    text-decoration: none;
+    font-size: 1em;
+    display: block;
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: background-color 0.2s, color 0.2s;
+    background-color: #222;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#track-list li a:hover {
+    background-color: #333;
+    color: #fff;
+}
+
+/* Responsive: Keep row layout but adjust sizes */
+@media (max-width: 900px) {
+    body {
+        display: block; /* Disable centering on mobile */
+        padding: 0;
+    }
+    
+    .main-container {
+        /* Keep row direction even on smaller screens */
+        flex-direction: row;
+        gap: 10px;
+        padding: 10px;
+        width: 100%;
+        height: 100%;
+        box-sizing: border-box;
+        background-color: transparent;
+        box-shadow: none;
+    }
+
+    .grid-container {
+        /* On smaller screens, let grid take up to 45% width */
+        flex: 0 0 45%;
+        max-width: none; /* Remove max-width constraint to fill the flex basis */
+    }
+    
+    .list-container {
+        flex: 1;
+        min-width: 0;
+        height: 100%;
+        overflow-y: auto;
+    }
+    
+    /* Adjust font sizes for smaller screens */
+    #track-list li {
+        font-size: 0.85em;
+        margin-bottom: 6px;
+    }
+    
+    #track-list li a {
+        padding: 6px 8px;
+    }
+}
