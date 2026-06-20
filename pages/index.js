@@ -1,6 +1,26 @@
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Head from 'next/head';
+
+// YouTube IFrame API를 한 번만 로드해서 공유하기 위한 헬퍼
+let ytApiPromise = null;
+function loadYouTubeApi() {
+    if (typeof window === 'undefined') return Promise.resolve(null);
+    if (window.YT && window.YT.Player) return Promise.resolve(window.YT);
+    if (ytApiPromise) return ytApiPromise;
+
+    ytApiPromise = new Promise((resolve) => {
+        const prev = window.onYouTubeIframeAPIReady;
+        window.onYouTubeIframeAPIReady = () => {
+            if (typeof prev === 'function') prev();
+            resolve(window.YT);
+        };
+        const tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(tag);
+    });
+    return ytApiPromise;
+}
 
 function PlayerContent() {
     const searchParams = useSearchParams();
@@ -15,6 +35,17 @@ function PlayerContent() {
         } else {
             setActiveIdx(idx);
         }
+    };
+
+    // 현재 곡 다음의 빈칸이 아닌 트랙을 자동 재생 (없으면 정지)
+    const playNext = () => {
+        setActiveIdx((cur) => {
+            if (cur === null) return null;
+            for (let j = cur + 1; j < links.length; j++) {
+                if (links[j]) return j;
+            }
+            return null;
+        });
     };
 
     const gridRef = import.meta.env ? { current: null } : null; // Next.js SSR safety
@@ -83,6 +114,7 @@ function PlayerContent() {
                         theme={gridConfig.theme}
                         isActive={activeIdx === i}
                         onToggle={() => togglePlay(i)}
+                        onEnded={playNext}
                     />
                 ))}
             </div>
@@ -103,8 +135,13 @@ function PlayerContent() {
     );
 }
 
-function GridItem({ link, index, theme, isActive, onToggle }) {
+function GridItem({ link, index, theme, isActive, onToggle, onEnded }) {
     const [title, setTitle] = useState(`Track ${index + 1}`);
+    const iframeRef = useRef(null);
+    const playerRef = useRef(null);
+    // 최신 onEnded를 ref로 들고 있어 부모 리렌더가 플레이어를 재생성하지 않도록 함
+    const onEndedRef = useRef(onEnded);
+    onEndedRef.current = onEnded;
 
     useEffect(() => {
         if (link) {
@@ -116,6 +153,39 @@ function GridItem({ link, index, theme, isActive, onToggle }) {
                 .catch(() => { });
         }
     }, [link]);
+
+    // 재생 중인 곡이 끝나면 다음 곡으로 자동 전환 (YouTube IFrame API)
+    useEffect(() => {
+        if (!isActive || !link) return;
+        let destroyed = false;
+
+        loadYouTubeApi().then((YT) => {
+            if (destroyed || !YT || !iframeRef.current) return;
+            try {
+                playerRef.current = new YT.Player(iframeRef.current, {
+                    events: {
+                        onStateChange: (e) => {
+                            if (e.data === YT.PlayerState.ENDED) {
+                                const cb = onEndedRef.current;
+                                if (typeof cb === 'function') cb();
+                            }
+                        }
+                    }
+                });
+            } catch (err) {
+                // API 바인딩 실패해도 재생 자체에는 영향 없음
+            }
+        });
+
+        return () => {
+            destroyed = true;
+            const player = playerRef.current;
+            playerRef.current = null;
+            if (player && typeof player.destroy === 'function') {
+                try { player.destroy(); } catch (err) { /* 이미 제거된 노드 */ }
+            }
+        };
+    }, [isActive, link]);
 
     const getClassName = () => {
         let base = 'grid-item';
@@ -133,7 +203,8 @@ function GridItem({ link, index, theme, isActive, onToggle }) {
         <div className={getClassName()} onClick={onToggle}>
             {isActive ? (
                 <iframe
-                    src={`https://www.youtube.com/embed/${link.id}?start=${link.t}&autoplay=1&playsinline=1`}
+                    ref={iframeRef}
+                    src={`https://www.youtube.com/embed/${link.id}?start=${link.t}&autoplay=1&playsinline=1&enablejsapi=1`}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                 />
