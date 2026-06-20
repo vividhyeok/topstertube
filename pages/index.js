@@ -1,6 +1,15 @@
-import { useEffect, useState, useRef, Suspense } from 'react';
+import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Head from 'next/head';
+
+/*
+ * 단일 영속 플레이어 방식
+ * - 곡마다 새 iframe을 만들지 않고, 플레이어 하나를 계속 살려둔 채
+ *   loadVideoById()로 곡만 교체한다.
+ * - 플레이어 요소가 파괴되지 않으므로 PC에서 다른 탭/창에 가 있어도
+ *   다음 곡으로 자동 전환이 끊기지 않는다.
+ * - 영상은 활성 셀 위에 픽셀 단위로 겹쳐(overlay) 표시 → PC/모바일 레이아웃 모두 대응.
+ */
 
 // YouTube IFrame API를 한 번만 로드해서 공유하기 위한 헬퍼
 let ytApiPromise = null;
@@ -26,31 +35,58 @@ function PlayerContent() {
     const searchParams = useSearchParams();
     const [links, setLinks] = useState([]);
     const [gridConfig, setGridConfig] = useState({ w: 3, h: 3, theme: 'grid' });
-
     const [activeIdx, setActiveIdx] = useState(null);
-
-    const togglePlay = (idx) => {
-        if (activeIdx === idx) {
-            setActiveIdx(null);
-        } else {
-            setActiveIdx(idx);
-        }
-    };
-
-    // 현재 곡 다음의 빈칸이 아닌 트랙을 자동 재생 (없으면 정지)
-    const playNext = () => {
-        setActiveIdx((cur) => {
-            if (cur === null) return null;
-            for (let j = cur + 1; j < links.length; j++) {
-                if (links[j]) return j;
-            }
-            return null;
-        });
-    };
-
-    const gridRef = import.meta.env ? { current: null } : null; // Next.js SSR safety
     const [gridHeight, setGridHeight] = useState('auto');
 
+    // DOM/플레이어 참조
+    const cellRefs = useRef([]);          // 각 그리드 셀 DOM
+    const overlayRef = useRef(null);      // 영상이 올라갈 오버레이 컨테이너
+    const playerHostRef = useRef(null);   // YT.Player가 대체할 마운트 노드
+    const playerRef = useRef(null);       // 영속 YT.Player 인스턴스
+
+    // 핸들러에서 항상 최신 값을 읽도록 ref 동기화
+    const activeIdxRef = useRef(activeIdx);
+    activeIdxRef.current = activeIdx;
+    const linksRef = useRef(links);
+    linksRef.current = links;
+
+    const togglePlay = (idx) => {
+        setActiveIdx((cur) => (cur === idx ? null : idx));
+    };
+
+    // 현재 곡 다음의 빈칸이 아닌 트랙으로 전환 (없으면 정지)
+    const advanceNext = useCallback(() => {
+        const cur = activeIdxRef.current;
+        const list = linksRef.current;
+        if (cur === null) return;
+        for (let j = cur + 1; j < list.length; j++) {
+            if (list[j]) {
+                setActiveIdx(j);
+                return;
+            }
+        }
+        setActiveIdx(null);
+    }, []);
+
+    // 오버레이를 활성 셀 위치/크기에 맞춤 (PC/모바일 공통, 픽셀 측정)
+    const positionOverlay = useCallback(() => {
+        const idx = activeIdxRef.current;
+        const overlay = overlayRef.current;
+        if (!overlay) return;
+        if (idx === null) {
+            overlay.style.display = 'none';
+            return;
+        }
+        const cell = cellRefs.current[idx];
+        if (!cell) return;
+        overlay.style.display = 'block';
+        overlay.style.left = `${cell.offsetLeft}px`;
+        overlay.style.top = `${cell.offsetTop}px`;
+        overlay.style.width = `${cell.offsetWidth}px`;
+        overlay.style.height = `${cell.offsetHeight}px`;
+    }, []);
+
+    // URL 파라미터 파싱
     useEffect(() => {
         const theme = searchParams.get('theme') || 'grid';
         let w = parseInt(searchParams.get('w')) || 3;
@@ -75,28 +111,97 @@ function PlayerContent() {
             }
         }
 
+        cellRefs.current = new Array(loadedLinks.length).fill(null);
         setLinks(loadedLinks);
         setGridConfig({ w, h, theme });
     }, [searchParams]);
 
-    // Height sync logic
+    // 활성 트랙이 바뀔 때: 플레이어 생성(최초 1회) 또는 loadVideoById로 교체
+    useEffect(() => {
+        if (activeIdx === null) {
+            positionOverlay();
+            if (playerRef.current && typeof playerRef.current.stopVideo === 'function') {
+                try { playerRef.current.stopVideo(); } catch (err) { /* noop */ }
+            }
+            return;
+        }
+
+        const link = links[activeIdx];
+        if (!link) return;
+
+        let cancelled = false;
+        positionOverlay();
+
+        loadYouTubeApi().then((YT) => {
+            if (cancelled || !YT || !overlayRef.current) return;
+            positionOverlay();
+
+            if (!playerRef.current) {
+                // 영속 플레이어 최초 생성 — 이후 파괴하지 않고 재사용
+                const host = document.createElement('div');
+                host.style.width = '100%';
+                host.style.height = '100%';
+                playerHostRef.current = host;
+                overlayRef.current.appendChild(host);
+
+                try {
+                    playerRef.current = new YT.Player(host, {
+                        width: '100%',
+                        height: '100%',
+                        videoId: link.id,
+                        playerVars: {
+                            start: link.t,
+                            autoplay: 1,
+                            playsinline: 1,
+                        },
+                        events: {
+                            onReady: (e) => {
+                                try { e.target.playVideo(); } catch (err) { /* 정책상 차단 가능 */ }
+                            },
+                            onStateChange: (e) => {
+                                if (e.data === YT.PlayerState.ENDED) advanceNext();
+                            },
+                        },
+                    });
+                } catch (err) {
+                    // 생성 실패해도 앱 자체는 동작
+                }
+            } else {
+                // 같은 플레이어 재사용 → 백그라운드에서도 끊김 없이 다음 곡 재생
+                try {
+                    playerRef.current.loadVideoById({ videoId: link.id, startSeconds: link.t });
+                } catch (err) { /* noop */ }
+            }
+        });
+
+        return () => { cancelled = true; };
+    }, [activeIdx, links, positionOverlay, advanceNext]);
+
+    // 레이아웃 변화(리사이즈/회전) 시 오버레이 재배치 + 데스크톱 리스트 높이 동기화
     useEffect(() => {
         const gridEl = document.querySelector('.grid-container');
         if (!gridEl) return;
 
-        const observer = new ResizeObserver(entries => {
-            for (let entry of entries) {
-                if (window.innerWidth > 850) {
-                    setGridHeight(`${entry.contentRect.height}px`);
-                } else {
-                    setGridHeight('auto');
-                }
+        const sync = () => {
+            if (window.innerWidth > 850) {
+                setGridHeight(`${gridEl.getBoundingClientRect().height}px`);
+            } else {
+                setGridHeight('auto');
             }
-        });
+            positionOverlay();
+        };
 
+        const observer = new ResizeObserver(sync);
         observer.observe(gridEl);
-        return () => observer.disconnect();
-    }, []);
+        window.addEventListener('resize', sync);
+        window.addEventListener('orientationchange', sync);
+
+        return () => {
+            observer.disconnect();
+            window.removeEventListener('resize', sync);
+            window.removeEventListener('orientationchange', sync);
+        };
+    }, [positionOverlay]);
 
     return (
         <div className="main-container">
@@ -104,7 +209,11 @@ function PlayerContent() {
                 className={`grid-container ${gridConfig.theme === 'classic' ? 'classic-layout' : ''}`}
                 data-theme={gridConfig.theme}
                 data-size={`${gridConfig.w}x${gridConfig.h}`}
-                style={gridConfig.theme !== 'classic' ? { gridTemplateColumns: `repeat(${gridConfig.w}, 1fr)` } : {}}
+                style={
+                    gridConfig.theme !== 'classic'
+                        ? { gridTemplateColumns: `repeat(${gridConfig.w}, 1fr)`, position: 'relative' }
+                        : { position: 'relative' }
+                }
             >
                 {links.map((link, i) => (
                     <GridItem
@@ -114,9 +223,23 @@ function PlayerContent() {
                         theme={gridConfig.theme}
                         isActive={activeIdx === i}
                         onToggle={() => togglePlay(i)}
-                        onEnded={playNext}
+                        cellRef={(el) => { cellRefs.current[i] = el; }}
                     />
                 ))}
+
+                {/* 단일 영속 플레이어가 올라가는 오버레이 (활성 셀 위에 겹침) */}
+                <div
+                    ref={overlayRef}
+                    className="player-overlay"
+                    style={{
+                        position: 'absolute',
+                        display: 'none',
+                        zIndex: 5,
+                        background: '#000',
+                        borderRadius: '2px',
+                        overflow: 'hidden',
+                    }}
+                />
             </div>
             <div className="list-container" style={{ maxHeight: gridHeight }}>
                 <ol id="track-list">
@@ -135,13 +258,8 @@ function PlayerContent() {
     );
 }
 
-function GridItem({ link, index, theme, isActive, onToggle, onEnded }) {
+function GridItem({ link, index, theme, isActive, onToggle, cellRef }) {
     const [title, setTitle] = useState(`Track ${index + 1}`);
-    const iframeRef = useRef(null);
-    const playerRef = useRef(null);
-    // 최신 onEnded를 ref로 들고 있어 부모 리렌더가 플레이어를 재생성하지 않도록 함
-    const onEndedRef = useRef(onEnded);
-    onEndedRef.current = onEnded;
 
     useEffect(() => {
         if (link) {
@@ -154,39 +272,6 @@ function GridItem({ link, index, theme, isActive, onToggle, onEnded }) {
         }
     }, [link]);
 
-    // 재생 중인 곡이 끝나면 다음 곡으로 자동 전환 (YouTube IFrame API)
-    useEffect(() => {
-        if (!isActive || !link) return;
-        let destroyed = false;
-
-        loadYouTubeApi().then((YT) => {
-            if (destroyed || !YT || !iframeRef.current) return;
-            try {
-                playerRef.current = new YT.Player(iframeRef.current, {
-                    events: {
-                        onStateChange: (e) => {
-                            if (e.data === YT.PlayerState.ENDED) {
-                                const cb = onEndedRef.current;
-                                if (typeof cb === 'function') cb();
-                            }
-                        }
-                    }
-                });
-            } catch (err) {
-                // API 바인딩 실패해도 재생 자체에는 영향 없음
-            }
-        });
-
-        return () => {
-            destroyed = true;
-            const player = playerRef.current;
-            playerRef.current = null;
-            if (player && typeof player.destroy === 'function') {
-                try { player.destroy(); } catch (err) { /* 이미 제거된 노드 */ }
-            }
-        };
-    }, [isActive, link]);
-
     const getClassName = () => {
         let base = 'grid-item';
         if (theme === 'classic') {
@@ -197,28 +282,21 @@ function GridItem({ link, index, theme, isActive, onToggle, onEnded }) {
         return base;
     };
 
-    if (!link) return <div className={getClassName()} style={{ backgroundColor: '#1e1e1e', cursor: 'default' }} />;
+    if (!link) {
+        return <div ref={cellRef} className={getClassName()} style={{ backgroundColor: '#1e1e1e', cursor: 'default' }} />;
+    }
 
     return (
-        <div className={getClassName()} onClick={onToggle}>
-            {isActive ? (
-                <iframe
-                    ref={iframeRef}
-                    src={`https://www.youtube.com/embed/${link.id}?start=${link.t}&autoplay=1&playsinline=1&enablejsapi=1`}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                />
-            ) : (
-                <img
-                    src={`https://img.youtube.com/vi/${link.id}/mqdefault.jpg`}
-                    alt={title}
-                    title={title}
-                    onError={(e) => {
-                        e.target.onerror = null; // Prevent infinite loop
-                        e.target.src = `https://img.youtube.com/vi/${link.id}/hqdefault.jpg`;
-                    }}
-                />
-            )}
+        <div ref={cellRef} className={getClassName()} onClick={onToggle}>
+            <img
+                src={`https://img.youtube.com/vi/${link.id}/mqdefault.jpg`}
+                alt={title}
+                title={title}
+                onError={(e) => {
+                    e.target.onerror = null; // Prevent infinite loop
+                    e.target.src = `https://img.youtube.com/vi/${link.id}/hqdefault.jpg`;
+                }}
+            />
         </div>
     );
 }
