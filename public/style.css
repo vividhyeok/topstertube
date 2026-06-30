@@ -154,26 +154,6 @@ html {
     border: 0;
 }
 
-.player-close-button {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    z-index: 2;
-    min-width: 42px;
-    height: 28px;
-    border: 1px solid rgba(255, 255, 255, 0.24);
-    border-radius: 4px;
-    background: rgba(0, 0, 0, 0.72);
-    color: #fff;
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-}
-
-.player-close-button:hover {
-    background: rgba(20, 20, 20, 0.88);
-}
-
 /* Right: List - Constrained width to prioritize Grid */
 .list-container {
     flex: 0 0 350px;
@@ -276,6 +256,12 @@ html {
 .create-topster-link:hover {
     color: #fff;
     border-color: #333;
+}
+
+.boot-state {
+    width: 100vw;
+    min-height: 100vh;
+    background: #000;
 }
 
 .landing-state {

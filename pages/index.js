@@ -1,5 +1,4 @@
-import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import Head from 'next/head';
 import { decodeTopsterSearchParams } from '../lib/topsterPayload';
 
@@ -39,6 +38,25 @@ function hasTopsterParams(searchParams) {
     return Array.from(searchParams.keys()).some((key) => /^link\d+$/.test(key));
 }
 
+function useUrlSearchParams() {
+    const [searchParams, setSearchParams] = useState(null);
+
+    useEffect(() => {
+        const syncSearchParams = () => {
+            setSearchParams(new URLSearchParams(window.location.search));
+        };
+
+        syncSearchParams();
+        window.addEventListener('popstate', syncSearchParams);
+
+        return () => {
+            window.removeEventListener('popstate', syncSearchParams);
+        };
+    }, []);
+
+    return searchParams;
+}
+
 function cleanTopicSuffix(value) {
     return String(value || '').replace(' - Topic', '');
 }
@@ -75,8 +93,8 @@ async function mapLimit(items, limit, worker) {
 }
 
 function PlayerContent() {
-    const searchParams = useSearchParams();
-    const hasSharedTopster = hasTopsterParams(searchParams);
+    const searchParams = useUrlSearchParams();
+    const hasSharedTopster = searchParams ? hasTopsterParams(searchParams) : null;
     const [links, setLinks] = useState([]);
     const [gridConfig, setGridConfig] = useState({ w: 3, h: 3, theme: 'grid' });
     const [activeIdx, setActiveIdx] = useState(null);
@@ -134,6 +152,8 @@ function PlayerContent() {
 
     // URL 파라미터 파싱. 새 compact payload(d=)와 기존 link1/link2 방식을 모두 지원한다.
     useEffect(() => {
+        if (!searchParams) return;
+
         if (!hasSharedTopster) {
             setLinks([]);
             setMetadata({});
@@ -264,6 +284,10 @@ function PlayerContent() {
         };
     }, [positionOverlay]);
 
+    if (searchParams === null) {
+        return <BootState />;
+    }
+
     if (!hasSharedTopster) {
         return <LandingState />;
     }
@@ -288,7 +312,6 @@ function PlayerContent() {
                             metadata={link ? metadata[link.id] : null}
                             index={i}
                             theme={gridConfig.theme}
-                            isActive={activeIdx === i}
                             onToggle={() => togglePlay(i)}
                             cellRef={(el) => { cellRefs.current[i] = el; }}
                         />
@@ -308,17 +331,6 @@ function PlayerContent() {
                         }}
                     >
                         <div ref={playerSlotRef} className="player-host" />
-                        <button
-                            type="button"
-                            className="player-close-button"
-                            onClick={(event) => {
-                                event.stopPropagation();
-                                setActiveIdx(null);
-                            }}
-                            aria-label="재생 정지"
-                        >
-                            정지
-                        </button>
                     </div>
                 </div>
                 <div className="list-container" style={{ maxHeight: gridHeight }}>
@@ -403,6 +415,10 @@ function ListItem({ link, metadata, onToggle, isActive }) {
     );
 }
 
+function BootState() {
+    return <main className="boot-state" aria-hidden="true" />;
+}
+
 function LandingState() {
     return (
         <main className="landing-state">
@@ -434,9 +450,7 @@ export default function Home() {
                 <meta name="description" content="유튜브 음악으로 만드는 나만의 재생 가능한 탑스터" />
                 <link rel="icon" href="/favicon.ico" />
             </Head>
-            <Suspense fallback={<div style={{ color: 'white', padding: '20px' }}>Loading Topstertube...</div>}>
-                <PlayerContent />
-            </Suspense>
+            <PlayerContent />
         </>
     );
 }
