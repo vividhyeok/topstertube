@@ -201,12 +201,35 @@ html {
     color: #222;
 }
 
-.create-topster-link {
+.topster-action-stack {
     position: fixed;
     left: 50%;
     bottom: 12px;
     transform: translateX(-50%);
     z-index: 20;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: min(520px, calc(100vw - 28px));
+    pointer-events: none;
+}
+
+.play-help-text {
+    margin: 0;
+    color: #8a8a8a;
+    font-size: 12px;
+    line-height: 1.45;
+    text-align: center;
+    text-wrap: balance;
+    padding: 7px 10px;
+    background: rgba(0, 0, 0, 0.72);
+    border: 1px solid #151515;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.create-topster-link {
     color: #777;
     font-size: 12px;
     line-height: 1;
@@ -215,6 +238,7 @@ html {
     background: rgba(0, 0, 0, 0.72);
     border: 1px solid #151515;
     border-radius: 4px;
+    pointer-events: auto;
 }
 
 .create-topster-link:hover {
@@ -508,11 +532,26 @@ html {
         flex: 1;
         width: 100%;
         max-width: 100%;
-        padding: 10px 10px 32px;
+        padding: 10px 10px 78px;
         box-sizing: border-box;
         overflow-y: auto;
         max-height: none !important;
         /* Override React sync on mobile */
+    }
+
+    .topster-action-stack {
+        bottom: max(10px, env(safe-area-inset-bottom));
+        width: calc(100vw - 20px);
+        gap: 5px;
+    }
+
+    .play-help-text,
+    .create-topster-link {
+        font-size: 11px;
+    }
+
+    .play-help-text {
+        padding: 6px 8px;
     }
 
     #track-list li {

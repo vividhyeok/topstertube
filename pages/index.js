@@ -236,12 +236,17 @@ function PlayerContent() {
                     </ol>
                 </div>
             </div>
-            <a
-                className="create-topster-link"
-                href="/help"
-            >
-                직접 탑스터 만들기
-            </a>
+            <div className="topster-action-stack" aria-label="Topstertube 안내">
+                <p className="play-help-text">
+                    곡 제목이나 표지를 클릭해 음악을 들어보세요. 끝나면 다음 곡으로 자동 재생됩니다.
+                </p>
+                <a
+                    className="create-topster-link"
+                    href="/help"
+                >
+                    직접 탑스터 만들기
+                </a>
+            </div>
         </>
     );
 }
