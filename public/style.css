@@ -235,25 +235,13 @@ html {
 
 .help-hero,
 .help-section {
-    width: min(760px, 100%);
+    width: min(820px, 100%);
     margin: 0 auto;
 }
 
 .help-hero {
-    padding-bottom: 34px;
+    padding: 8px 0 34px;
     border-bottom: 1px solid #141414;
-}
-
-.help-back-link {
-    display: inline-block;
-    color: #777;
-    font-size: 13px;
-    text-decoration: none;
-    margin-bottom: 34px;
-}
-
-.help-back-link:hover {
-    color: #fff;
 }
 
 .help-kicker {
@@ -265,19 +253,60 @@ html {
 
 .help-hero h1 {
     margin: 0;
-    max-width: 640px;
-    font-size: clamp(32px, 6vw, 54px);
-    line-height: 1.04;
+    max-width: 780px;
+    font-size: clamp(31px, 6vw, 56px);
+    line-height: 1.08;
     font-weight: 700;
     letter-spacing: 0;
 }
 
 .help-hero p {
-    max-width: 560px;
+    max-width: 680px;
     margin: 18px 0 0;
     color: #b8b8b8;
     font-size: 16px;
     line-height: 1.7;
+}
+
+.help-cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 24px;
+}
+
+.help-primary-link,
+.help-secondary-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 0 14px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    box-sizing: border-box;
+}
+
+.help-primary-link {
+    background: #fff;
+    color: #000;
+}
+
+.help-primary-link:hover {
+    background: #ddd;
+}
+
+.help-secondary-link {
+    color: #eee;
+    background: #111;
+    border: 1px solid #242424;
+}
+
+.help-secondary-link:hover {
+    color: #fff;
+    border-color: #444;
 }
 
 .help-section {
@@ -305,6 +334,14 @@ html {
     box-sizing: border-box;
 }
 
+.help-step-index {
+    display: block;
+    margin-bottom: 18px;
+    color: #4d4d4d;
+    font-size: 12px;
+    font-weight: 700;
+}
+
 .help-step h3 {
     margin: 0 0 10px;
     color: #fff;
@@ -315,6 +352,54 @@ html {
 .help-step p,
 .help-note p {
     margin: 0;
+    color: #aaa;
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.help-update-box {
+    border: 1px solid #181818;
+    border-radius: 8px;
+    background: #090909;
+    padding: 18px;
+}
+
+.help-update-box p {
+    margin: 0;
+    color: #aaa;
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.help-update-box p + p {
+    margin-top: 6px;
+}
+
+.help-platform-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.help-platform-grid div {
+    min-height: 132px;
+    border: 1px solid #181818;
+    border-radius: 8px;
+    background: #090909;
+    padding: 18px;
+    box-sizing: border-box;
+}
+
+.help-platform-grid strong {
+    display: block;
+    margin-bottom: 10px;
+    color: #fff;
+    font-size: 15px;
+    line-height: 1.35;
+}
+
+.help-platform-grid span {
+    display: block;
     color: #aaa;
     font-size: 14px;
     line-height: 1.7;
@@ -347,6 +432,46 @@ html {
 
 .help-note {
     padding-bottom: 40px;
+}
+
+.help-guide-link {
+    margin-top: 16px;
+}
+
+.help-animate {
+    animation: help-rise 360ms ease-out both;
+}
+
+.help-animate:nth-of-type(2) {
+    animation-delay: 40ms;
+}
+
+.help-animate:nth-of-type(3) {
+    animation-delay: 80ms;
+}
+
+.help-animate:nth-of-type(4) {
+    animation-delay: 120ms;
+}
+
+.help-animate:nth-of-type(5) {
+    animation-delay: 160ms;
+}
+
+.help-animate:nth-of-type(6) {
+    animation-delay: 200ms;
+}
+
+@keyframes help-rise {
+    from {
+        opacity: 0;
+        transform: translateY(18px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* Mobile Responsive */
@@ -399,12 +524,36 @@ html {
         padding: 26px 16px 48px;
     }
 
-    .help-back-link {
-        margin-bottom: 28px;
+    .help-hero h1 {
+        font-size: 30px;
+        line-height: 1.14;
+    }
+
+    .help-hero p {
+        font-size: 15px;
+        line-height: 1.68;
+    }
+
+    .help-cta-row {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .help-primary-link,
+    .help-secondary-link {
+        width: 100%;
     }
 
     .help-step-list {
         grid-template-columns: 1fr;
+    }
+
+    .help-platform-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .help-platform-grid div {
+        min-height: auto;
     }
 
     .help-output-row {
