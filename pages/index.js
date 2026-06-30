@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Head from 'next/head';
+import { decodeTopsterSearchParams } from '../lib/topsterPayload';
 
 /*
  * 단일 영속 플레이어 방식
@@ -86,30 +87,9 @@ function PlayerContent() {
         overlay.style.height = `${cell.offsetHeight}px`;
     }, []);
 
-    // URL 파라미터 파싱
+    // URL 파라미터 파싱. 새 compact payload(d=)와 기존 link1/link2 방식을 모두 지원한다.
     useEffect(() => {
-        const theme = searchParams.get('theme') || 'grid';
-        let w = parseInt(searchParams.get('w')) || 3;
-        let h = parseInt(searchParams.get('h')) || 3;
-
-        const loadedLinks = [];
-        const total = theme === 'classic' ? 42 : w * h;
-
-        for (let i = 1; i <= total; i++) {
-            const linkParam = searchParams.get(`link${i}`);
-            if (linkParam) {
-                let videoId = linkParam;
-                let start = 0;
-                if (linkParam.includes('?t=')) {
-                    const parts = linkParam.split('?t=');
-                    videoId = parts[0];
-                    start = parseInt(parts[1]) || 0;
-                }
-                loadedLinks.push({ id: videoId, t: start, order: i });
-            } else {
-                loadedLinks.push(null);
-            }
-        }
+        const { links: loadedLinks, w, h, theme } = decodeTopsterSearchParams(searchParams);
 
         cellRefs.current = new Array(loadedLinks.length).fill(null);
         setLinks(loadedLinks);
@@ -204,57 +184,65 @@ function PlayerContent() {
     }, [positionOverlay]);
 
     return (
-        <div className="main-container">
-            <div
-                className={`grid-container ${gridConfig.theme === 'classic' ? 'classic-layout' : ''}`}
-                data-theme={gridConfig.theme}
-                data-size={`${gridConfig.w}x${gridConfig.h}`}
-                style={
-                    gridConfig.theme !== 'classic'
-                        ? { gridTemplateColumns: `repeat(${gridConfig.w}, 1fr)`, position: 'relative' }
-                        : { position: 'relative' }
-                }
-            >
-                {links.map((link, i) => (
-                    <GridItem
-                        key={i}
-                        link={link}
-                        index={i}
-                        theme={gridConfig.theme}
-                        isActive={activeIdx === i}
-                        onToggle={() => togglePlay(i)}
-                        cellRef={(el) => { cellRefs.current[i] = el; }}
-                    />
-                ))}
-
-                {/* 단일 영속 플레이어가 올라가는 오버레이 (활성 셀 위에 겹침) */}
+        <>
+            <div className="main-container">
                 <div
-                    ref={overlayRef}
-                    className="player-overlay"
-                    style={{
-                        position: 'absolute',
-                        display: 'none',
-                        zIndex: 5,
-                        background: '#000',
-                        borderRadius: '2px',
-                        overflow: 'hidden',
-                    }}
-                />
-            </div>
-            <div className="list-container" style={{ maxHeight: gridHeight }}>
-                <ol id="track-list">
+                    className={`grid-container ${gridConfig.theme === 'classic' ? 'classic-layout' : ''}`}
+                    data-theme={gridConfig.theme}
+                    data-size={`${gridConfig.w}x${gridConfig.h}`}
+                    style={
+                        gridConfig.theme !== 'classic'
+                            ? { gridTemplateColumns: `repeat(${gridConfig.w}, 1fr)`, position: 'relative' }
+                            : { position: 'relative' }
+                    }
+                >
                     {links.map((link, i) => (
-                        <ListItem
+                        <GridItem
                             key={i}
                             link={link}
                             index={i}
-                            onToggle={() => togglePlay(i)}
+                            theme={gridConfig.theme}
                             isActive={activeIdx === i}
+                            onToggle={() => togglePlay(i)}
+                            cellRef={(el) => { cellRefs.current[i] = el; }}
                         />
                     ))}
-                </ol>
+
+                    {/* 단일 영속 플레이어가 올라가는 오버레이 (활성 셀 위에 겹침) */}
+                    <div
+                        ref={overlayRef}
+                        className="player-overlay"
+                        style={{
+                            position: 'absolute',
+                            display: 'none',
+                            zIndex: 5,
+                            background: '#000',
+                            borderRadius: '2px',
+                            overflow: 'hidden',
+                        }}
+                    />
+                </div>
+                <div className="list-container" style={{ maxHeight: gridHeight }}>
+                    <ol id="track-list">
+                        {links.map((link, i) => (
+                            <ListItem
+                                key={i}
+                                link={link}
+                                index={i}
+                                onToggle={() => togglePlay(i)}
+                                isActive={activeIdx === i}
+                            />
+                        ))}
+                    </ol>
+                </div>
             </div>
-        </div>
+            <a
+                className="create-topster-link"
+                href="/help"
+            >
+                직접 탑스터 만들기
+            </a>
+        </>
     );
 }
 
