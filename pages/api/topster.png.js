@@ -1,15 +1,29 @@
 import sharp from "sharp";
-import { decodeTopsterQueryObject } from "../../lib/topsterPayload";
+import { decodeTopsterData, decodeTopsterQueryObject } from "../../lib/topsterPayload";
+
+const ALLOWED_GRID_KEYS = new Set(["2x2", "3x3", "4x4", "5x5"]);
+const MAX_PIXELS = 12_000_000;
+const THUMBNAIL_CONCURRENCY = 6;
+const THUMBNAIL_TIMEOUT_MS = 4000;
+
+class RequestError extends Error {
+    constructor(statusCode, message) {
+        super(message);
+        this.statusCode = statusCode;
+    }
+}
 
 export default async function handler(req, res) {
     try {
         const q = req.query;
-        const { links, w, h, theme } = decodeTopsterQueryObject(q);
+        const { links, w, h, theme } = decodeRequestQuery(q);
+
+        validateLayout({ w, h, theme });
 
         let width, height;
-        let cellBase = clampInt(q.cell, 120, 700, 360);
+        let cellBase = clampInt(q.cell, 120, 400, 360);
         let gap = clampInt(q.gap, 0, 60, 10);
-        let bg = q.bg || "#121212";
+        let bg = normalizeColorParam(q.bg) || "#121212";
 
         let layoutCoords = [];
 
@@ -63,6 +77,11 @@ export default async function handler(req, res) {
             }
         }
 
+        const pixelCount = Math.round(width) * Math.round(height);
+        if (pixelCount > MAX_PIXELS) {
+            throw new RequestError(400, "Requested image is too large");
+        }
+
         const base = sharp({
             create: {
                 width: Math.round(width),
@@ -79,45 +98,7 @@ export default async function handler(req, res) {
             if (link?.id) jobs.push({ videoId: link.id, coord: layoutCoords[i] });
         }
 
-        const tiles = (await Promise.all(
-            jobs.map(async ({ videoId, coord }) => {
-                try {
-                    // Try 16:9 sources to avoid black bars: maxresdefault -> mqdefault
-                    const sources = [
-                        `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
-                        `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,
-                        `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
-                    ];
-
-                    let buf = null;
-                    for (const url of sources) {
-                        try {
-                            const res = await fetch(url);
-                            if (res.ok) {
-                                const ab = await res.arrayBuffer();
-                                buf = Buffer.from(ab);
-                                break;
-                            }
-                        } catch (e) { }
-                    }
-
-                    if (!buf) throw new Error("No image found");
-
-                    // 1. Base Tile: Center Crop 1:1
-                    const size = Math.round(coord.size);
-                    const baseTile = sharp(buf)
-                        .resize(size, size, { fit: "cover", position: "centre" })
-                        .modulate({ contrast: 1.05, brightness: 1.02 })
-                        .sharpen();
-
-                    const tileBuffer = await baseTile.toBuffer();
-                    return { tile: tileBuffer, left: Math.round(coord.x), top: Math.round(coord.y) };
-                } catch (e) {
-                    console.error(`Error processing tile ${videoId}:`, e);
-                    return null;
-                }
-            })
-        )).filter(t => t !== null);
+        const tiles = (await mapLimit(jobs, THUMBNAIL_CONCURRENCY, renderTile)).filter(t => t !== null);
 
         const out = await base
             .composite(tiles.map(t => ({ input: t.tile, left: t.left, top: t.top })))
@@ -128,13 +109,122 @@ export default async function handler(req, res) {
         res.setHeader("Cache-Control", "public, s-maxage=86400, stale-while-revalidate=604800");
         res.status(200).send(out);
     } catch (e) {
-        console.error(e);
-        res.status(500).send("Failed to generate image");
+        const status = e.statusCode || 500;
+        if (status >= 500) {
+            console.error(e);
+        }
+        res.status(status).send(status === 400 ? e.message : "Failed to generate image");
     }
 }
 
+function decodeRequestQuery(query) {
+    const compactPayload = readStringParam(query.d);
+
+    if (compactPayload) {
+        try {
+            return decodeTopsterData(compactPayload);
+        } catch (error) {
+            throw new RequestError(400, "Invalid topster payload");
+        }
+    }
+
+    try {
+        return decodeTopsterQueryObject(query);
+    } catch (error) {
+        throw new RequestError(400, "Invalid topster query");
+    }
+}
+
+function validateLayout({ w, h, theme }) {
+    if (theme === "classic") return;
+
+    if (!ALLOWED_GRID_KEYS.has(`${w}x${h}`)) {
+        throw new RequestError(400, "Unsupported topster layout");
+    }
+}
+
+async function renderTile({ videoId, coord }) {
+    try {
+        // Try 16:9 sources to avoid black bars: maxresdefault -> mqdefault
+        const sources = [
+            `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
+            `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,
+            `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+        ];
+
+        let buf = null;
+        for (const url of sources) {
+            buf = await fetchImageBuffer(url);
+            if (buf) break;
+        }
+
+        if (!buf) throw new Error("No image found");
+
+        const size = Math.round(coord.size);
+        const tileBuffer = await sharp(buf)
+            .resize(size, size, { fit: "cover", position: "centre" })
+            .modulate({ brightness: 1.02 })
+            .sharpen()
+            .toBuffer();
+
+        return { tile: tileBuffer, left: Math.round(coord.x), top: Math.round(coord.y) };
+    } catch (e) {
+        console.error(`Error processing tile ${videoId}:`, e);
+        return null;
+    }
+}
+
+async function fetchImageBuffer(url) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), THUMBNAIL_TIMEOUT_MS);
+
+    try {
+        const res = await fetch(url, { signal: controller.signal });
+        if (!res.ok) return null;
+
+        const contentType = res.headers.get("content-type") || "";
+        if (contentType && !contentType.startsWith("image/")) return null;
+
+        const ab = await res.arrayBuffer();
+        return Buffer.from(ab);
+    } catch (error) {
+        return null;
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+async function mapLimit(items, limit, worker) {
+    const results = new Array(items.length);
+    let nextIndex = 0;
+
+    async function runWorker() {
+        while (nextIndex < items.length) {
+            const currentIndex = nextIndex;
+            nextIndex += 1;
+            results[currentIndex] = await worker(items[currentIndex], currentIndex);
+        }
+    }
+
+    const workers = Array.from({ length: Math.min(limit, items.length) }, runWorker);
+    await Promise.all(workers);
+    return results;
+}
+
+function normalizeColorParam(value) {
+    const text = readStringParam(value).trim();
+    if (!text) return null;
+    return /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(text) ? text : null;
+}
+
+function readStringParam(value) {
+    if (Array.isArray(value)) return value[0] || "";
+    if (value === undefined || value === null) return "";
+    return String(value);
+}
+
 function clampInt(v, min, max, fallback) {
-    const n = parseInt(v, 10);
+    const n = parseInt(readStringParam(v), 10);
     if (Number.isNaN(n)) return fallback;
     return Math.max(min, Math.min(max, n));
 }

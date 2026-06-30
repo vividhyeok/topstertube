@@ -23,10 +23,11 @@ const steps = [
 ];
 
 const shareOptions = [
-    ['iframe 복사', 'iframe을 넣을 수 있는 커뮤니티, 블로그, 개인 페이지에 재생 가능한 탑스터를 넣을 때 사용합니다.'],
     ['링크 복사', '카카오톡, X, 인스타 스토리 등에서 재생 가능한 탑스터 페이지를 공유할 때 사용합니다.'],
     ['이미지 저장', '인스타 스토리나 게시글처럼 이미지 파일이 필요한 곳에 올릴 때 사용합니다.'],
     ['이미지 링크', '이미지 주소를 바로 붙여넣을 수 있는 게시판, 문서, 메신저에서 사용합니다.'],
+    ['iframe 복사', 'iframe을 넣을 수 있는 커뮤니티, 블로그, 개인 페이지에 재생 가능한 탑스터를 넣을 때 사용합니다.'],
+    ['미리보기', '공유하기 전에 실제 재생 페이지가 어떻게 보이는지 새 탭에서 확인할 때 사용합니다.'],
 ];
 
 export default function Help() {
@@ -35,17 +36,16 @@ export default function Help() {
             <Head>
                 <title>Topstertube 도움말</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                <meta name="description" content="Topstertube는 사용자의 어떠한 개인정보도 수집하지 않습니다." />
+                <meta name="description" content="Topstertube 사용법과 공유 방식 안내" />
                 <link rel="icon" href="/favicon.ico" />
-                <link rel="stylesheet" href="/style.css" />
             </Head>
             <main className="help-page">
                 <section className="help-hero help-animate">
-                    <p className="help-kicker">Privacy Policy</p>
-                    <h1>Topstertube는 사용자의 어떠한 개인정보도 수집하지 않습니다.</h1>
+                    <p className="help-kicker">Help</p>
+                    <h1>Topstertube로 재생 가능한 탑스터를 만들어보세요.</h1>
                     <p>
-                        Topstertube는 별도의 계정, 로그인, 분석 도구, 개인 식별 정보를 사용하지 않습니다.
-                        사용자가 만든 탑스터 정보는 공유 링크 안에 담기며, 서비스가 별도로 저장하지 않습니다.
+                        Chrome 확장 프로그램에서 YouTube 곡을 모으고, 순서를 정리한 뒤 링크나 이미지로 공유할 수 있습니다.
+                        공유받은 사람은 확장 프로그램 설치 없이 웹에서 바로 감상합니다.
                     </p>
                     <div className="help-cta-row">
                         <a className="help-primary-link" href={chromeStoreUrl} target="_blank" rel="noopener noreferrer">
@@ -53,6 +53,9 @@ export default function Help() {
                         </a>
                         <a className="help-secondary-link" href={notionGuideUrl} target="_blank" rel="noopener noreferrer">
                             자세한 사용법 보기
+                        </a>
+                        <a className="help-secondary-link" href="/privacy">
+                            개인정보 처리 안내
                         </a>
                     </div>
                 </section>
@@ -110,13 +113,19 @@ export default function Help() {
                 </section>
 
                 <section className="help-section help-note help-animate">
-                    <h2>더 자세한 사용법</h2>
+                    <h2>더 자세한 안내</h2>
                     <p>
-                        확장 프로그램 설치 후 곡을 추가하고 공유하는 자세한 과정은 기존 Notion 가이드를 참고하세요.
+                        확장 프로그램 설치 후 곡을 추가하고 공유하는 자세한 과정은 Notion 가이드를 참고하세요.
+                        데이터 처리 방식은 개인정보 처리 안내에서 확인할 수 있습니다.
                     </p>
-                    <a className="help-secondary-link help-guide-link" href={notionGuideUrl} target="_blank" rel="noopener noreferrer">
-                        Notion 가이드 열기
-                    </a>
+                    <div className="help-cta-row">
+                        <a className="help-secondary-link help-guide-link" href={notionGuideUrl} target="_blank" rel="noopener noreferrer">
+                            Notion 가이드 열기
+                        </a>
+                        <a className="help-secondary-link help-guide-link" href="/privacy">
+                            개인정보 처리 안내
+                        </a>
+                    </div>
                 </section>
             </main>
         </>

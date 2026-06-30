@@ -3,6 +3,8 @@ import { useSearchParams } from 'next/navigation';
 import Head from 'next/head';
 import { decodeTopsterSearchParams } from '../lib/topsterPayload';
 
+const chromeStoreUrl = 'https://chromewebstore.google.com/detail/topstertube-%EC%9E%AC%EC%83%9D-%EA%B0%80%EB%8A%A5%ED%95%9C-%ED%83%91%EC%8A%A4%ED%84%B0/nnhcekoanhgdanobfegpjhdlankamgba';
+
 /*
  * 단일 영속 플레이어 방식
  * - 곡마다 새 iframe을 만들지 않고, 플레이어 하나를 계속 살려둔 채
@@ -32,16 +34,59 @@ function loadYouTubeApi() {
     return ytApiPromise;
 }
 
+function hasTopsterParams(searchParams) {
+    if (searchParams.get('d')) return true;
+    return Array.from(searchParams.keys()).some((key) => /^link\d+$/.test(key));
+}
+
+function cleanTopicSuffix(value) {
+    return String(value || '').replace(' - Topic', '');
+}
+
+async function fetchTrackMetadata(videoId, signal) {
+    try {
+        const response = await fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${videoId}`, { signal });
+        const data = await response.json();
+
+        return {
+            title: data.title ? cleanTopicSuffix(data.title) : videoId,
+            author: data.author_name ? cleanTopicSuffix(data.author_name) : '',
+        };
+    } catch (error) {
+        return { title: videoId, author: '' };
+    }
+}
+
+async function mapLimit(items, limit, worker) {
+    const results = new Array(items.length);
+    let nextIndex = 0;
+
+    async function runWorker() {
+        while (nextIndex < items.length) {
+            const currentIndex = nextIndex;
+            nextIndex += 1;
+            results[currentIndex] = await worker(items[currentIndex], currentIndex);
+        }
+    }
+
+    const workers = Array.from({ length: Math.min(limit, items.length) }, runWorker);
+    await Promise.all(workers);
+    return results;
+}
+
 function PlayerContent() {
     const searchParams = useSearchParams();
+    const hasSharedTopster = hasTopsterParams(searchParams);
     const [links, setLinks] = useState([]);
     const [gridConfig, setGridConfig] = useState({ w: 3, h: 3, theme: 'grid' });
     const [activeIdx, setActiveIdx] = useState(null);
     const [gridHeight, setGridHeight] = useState('auto');
+    const [metadata, setMetadata] = useState({});
 
     // DOM/플레이어 참조
     const cellRefs = useRef([]);          // 각 그리드 셀 DOM
     const overlayRef = useRef(null);      // 영상이 올라갈 오버레이 컨테이너
+    const playerSlotRef = useRef(null);   // YT.Player 마운트 노드를 담는 래퍼
     const playerHostRef = useRef(null);   // YT.Player가 대체할 마운트 노드
     const playerRef = useRef(null);       // 영속 YT.Player 인스턴스
 
@@ -89,12 +134,47 @@ function PlayerContent() {
 
     // URL 파라미터 파싱. 새 compact payload(d=)와 기존 link1/link2 방식을 모두 지원한다.
     useEffect(() => {
+        if (!hasSharedTopster) {
+            setLinks([]);
+            setMetadata({});
+            setActiveIdx(null);
+            return;
+        }
+
         const { links: loadedLinks, w, h, theme } = decodeTopsterSearchParams(searchParams);
 
         cellRefs.current = new Array(loadedLinks.length).fill(null);
         setLinks(loadedLinks);
         setGridConfig({ w, h, theme });
-    }, [searchParams]);
+    }, [searchParams, hasSharedTopster]);
+
+    useEffect(() => {
+        if (!hasSharedTopster || links.length === 0) {
+            setMetadata({});
+            return;
+        }
+
+        const videoIds = Array.from(new Set(links.filter(Boolean).map((link) => link.id)));
+        if (videoIds.length === 0) {
+            setMetadata({});
+            return;
+        }
+
+        const controller = new AbortController();
+        let cancelled = false;
+
+        mapLimit(videoIds, 6, async (videoId) => {
+            const data = await fetchTrackMetadata(videoId, controller.signal);
+            return [videoId, data];
+        }).then((entries) => {
+            if (!cancelled) setMetadata(Object.fromEntries(entries));
+        });
+
+        return () => {
+            cancelled = true;
+            controller.abort();
+        };
+    }, [links, hasSharedTopster]);
 
     // 활성 트랙이 바뀔 때: 플레이어 생성(최초 1회) 또는 loadVideoById로 교체
     useEffect(() => {
@@ -116,13 +196,14 @@ function PlayerContent() {
             if (cancelled || !YT || !overlayRef.current) return;
             positionOverlay();
 
-            if (!playerRef.current) {
+            if (!playerRef.current && playerSlotRef.current) {
                 // 영속 플레이어 최초 생성 — 이후 파괴하지 않고 재사용
                 const host = document.createElement('div');
                 host.style.width = '100%';
                 host.style.height = '100%';
                 playerHostRef.current = host;
-                overlayRef.current.appendChild(host);
+                playerSlotRef.current.textContent = '';
+                playerSlotRef.current.appendChild(host);
 
                 try {
                     playerRef.current = new YT.Player(host, {
@@ -183,6 +264,10 @@ function PlayerContent() {
         };
     }, [positionOverlay]);
 
+    if (!hasSharedTopster) {
+        return <LandingState />;
+    }
+
     return (
         <>
             <div className="main-container">
@@ -200,6 +285,7 @@ function PlayerContent() {
                         <GridItem
                             key={i}
                             link={link}
+                            metadata={link ? metadata[link.id] : null}
                             index={i}
                             theme={gridConfig.theme}
                             isActive={activeIdx === i}
@@ -220,7 +306,20 @@ function PlayerContent() {
                             borderRadius: '2px',
                             overflow: 'hidden',
                         }}
-                    />
+                    >
+                        <div ref={playerSlotRef} className="player-host" />
+                        <button
+                            type="button"
+                            className="player-close-button"
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                setActiveIdx(null);
+                            }}
+                            aria-label="재생 정지"
+                        >
+                            정지
+                        </button>
+                    </div>
                 </div>
                 <div className="list-container" style={{ maxHeight: gridHeight }}>
                     <ol id="track-list">
@@ -228,7 +327,7 @@ function PlayerContent() {
                             <ListItem
                                 key={i}
                                 link={link}
-                                index={i}
+                                metadata={link ? metadata[link.id] : null}
                                 onToggle={() => togglePlay(i)}
                                 isActive={activeIdx === i}
                             />
@@ -251,20 +350,7 @@ function PlayerContent() {
     );
 }
 
-function GridItem({ link, index, theme, isActive, onToggle, cellRef }) {
-    const [title, setTitle] = useState(`Track ${index + 1}`);
-
-    useEffect(() => {
-        if (link) {
-            fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${link.id}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.title) setTitle(data.title.replace(' - Topic', ''));
-                })
-                .catch(() => { });
-        }
-    }, [link]);
-
+function GridItem({ link, metadata, index, theme, onToggle, cellRef }) {
     const getClassName = () => {
         let base = 'grid-item';
         if (theme === 'classic') {
@@ -278,6 +364,8 @@ function GridItem({ link, index, theme, isActive, onToggle, cellRef }) {
     if (!link) {
         return <div ref={cellRef} className={getClassName()} style={{ backgroundColor: '#1e1e1e', cursor: 'default' }} />;
     }
+
+    const title = metadata?.title || link.id;
 
     return (
         <div ref={cellRef} className={getClassName()} onClick={onToggle}>
@@ -294,24 +382,11 @@ function GridItem({ link, index, theme, isActive, onToggle, cellRef }) {
     );
 }
 
-function ListItem({ link, index, onToggle, isActive }) {
-    const [text, setText] = useState('-');
-
-    useEffect(() => {
-        if (link) {
-            fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${link.id}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.title) {
-                        const artist = data.author_name ? data.author_name.replace(' - Topic', '') : '';
-                        setText(artist ? `${artist} - ${data.title}` : data.title);
-                    }
-                })
-                .catch(() => { });
-        }
-    }, [link]);
-
+function ListItem({ link, metadata, onToggle, isActive }) {
     if (!link) return <li><span className="empty-li">-</span></li>;
+
+    const title = metadata?.title || link.id;
+    const text = metadata?.author ? `${metadata.author} - ${title}` : title;
 
     return (
         <li style={isActive ? { backgroundColor: '#111' } : {}}>
@@ -328,6 +403,28 @@ function ListItem({ link, index, onToggle, isActive }) {
     );
 }
 
+function LandingState() {
+    return (
+        <main className="landing-state">
+            <section className="landing-copy">
+                <p className="landing-kicker">Topstertube</p>
+                <h1>좋아하는 음악을 재생 가능한 탑스터로 만들어보세요.</h1>
+                <p>
+                    Chrome 확장 프로그램에서 YouTube 곡을 모으고, 공유 링크를 받은 사람은 설치 없이 웹에서 바로 감상할 수 있습니다.
+                </p>
+                <div className="landing-actions">
+                    <a className="landing-primary-link" href={chromeStoreUrl} target="_blank" rel="noopener noreferrer">
+                        확장 프로그램 설치
+                    </a>
+                    <a className="landing-secondary-link" href="/help">
+                        사용법 보기
+                    </a>
+                </div>
+            </section>
+        </main>
+    );
+}
+
 export default function Home() {
     return (
         <>
@@ -336,7 +433,6 @@ export default function Home() {
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <meta name="description" content="유튜브 음악으로 만드는 나만의 재생 가능한 탑스터" />
                 <link rel="icon" href="/favicon.ico" />
-                <link rel="stylesheet" href="/style.css" />
             </Head>
             <Suspense fallback={<div style={{ color: 'white', padding: '20px' }}>Loading Topstertube...</div>}>
                 <PlayerContent />

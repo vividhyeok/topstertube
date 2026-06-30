@@ -142,6 +142,38 @@ html {
     border: none;
 }
 
+.player-host {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+}
+
+.player-host iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+.player-close-button {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 2;
+    min-width: 42px;
+    height: 28px;
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.72);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.player-close-button:hover {
+    background: rgba(20, 20, 20, 0.88);
+}
+
 /* Right: List - Constrained width to prioritize Grid */
 .list-container {
     flex: 0 0 350px;
@@ -244,6 +276,87 @@ html {
 .create-topster-link:hover {
     color: #fff;
     border-color: #333;
+}
+
+.landing-state {
+    width: 100vw;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    box-sizing: border-box;
+    background: #000;
+}
+
+.landing-copy {
+    width: min(680px, 100%);
+}
+
+.landing-kicker {
+    margin: 0 0 12px;
+    color: #777;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+
+.landing-copy h1 {
+    margin: 0;
+    color: #fff;
+    font-size: clamp(34px, 7vw, 64px);
+    line-height: 1.08;
+    letter-spacing: 0;
+}
+
+.landing-copy p {
+    max-width: 580px;
+    margin: 18px 0 0;
+    color: #aaa;
+    font-size: 16px;
+    line-height: 1.7;
+}
+
+.landing-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 26px;
+}
+
+.landing-primary-link,
+.landing-secondary-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0 15px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    box-sizing: border-box;
+}
+
+.landing-primary-link {
+    background: #fff;
+    color: #000;
+}
+
+.landing-secondary-link {
+    background: #111;
+    color: #eee;
+    border: 1px solid #242424;
+}
+
+.landing-primary-link:hover {
+    background: #ddd;
+}
+
+.landing-secondary-link:hover {
+    border-color: #444;
+    color: #fff;
 }
 
 .help-page {
@@ -552,6 +665,26 @@ html {
 
     .play-help-text {
         padding: 6px 8px;
+    }
+
+    .landing-state {
+        align-items: flex-start;
+        padding: 34px 16px;
+    }
+
+    .landing-copy h1 {
+        font-size: 34px;
+        line-height: 1.14;
+    }
+
+    .landing-copy p {
+        font-size: 15px;
+        line-height: 1.68;
+    }
+
+    .landing-actions {
+        display: grid;
+        grid-template-columns: 1fr;
     }
 
     #track-list li {

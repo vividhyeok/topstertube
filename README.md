@@ -10,9 +10,9 @@
 - 2x2, 3x3, 4x4, 5x5, Classic 42 레이아웃 지원
 - 현재 YouTube 탭의 영상 ID와 재생 시각 저장
 - 드래그 앤 드롭으로 순서 변경
-- 공유 링크, 이미지 링크, iframe 코드, PNG 다운로드 출력
+- 공유 링크, 이미지 링크, iframe 코드, PNG 다운로드, 미리보기 출력
 - `d=` compact payload로 기존 `link1/link2...` 방식보다 짧은 URL 생성
-- `/help` 설명 페이지 제공
+- `/help` 설명 페이지와 `/privacy` 개인정보 처리 안내 제공
 
 ## 실행
 
