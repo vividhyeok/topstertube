@@ -18,7 +18,7 @@ const steps = [
     },
     {
         title: '목적에 맞게 공유',
-        body: '완성 후 링크, 이미지 링크, iframe, 이미지 저장 중 필요한 방식만 골라 사용합니다.',
+        body: '완성 후 링크, 이미지 링크, HTML, 이미지 저장 중 필요한 방식만 골라 사용합니다.',
     },
 ];
 
@@ -26,7 +26,7 @@ const shareOptions = [
     ['링크 복사', '카카오톡, X, 인스타 스토리 등에서 재생 가능한 탑스터 페이지를 공유할 때 사용합니다.'],
     ['이미지 저장', '인스타 스토리나 게시글처럼 이미지 파일이 필요한 곳에 올릴 때 사용합니다.'],
     ['이미지 링크', '이미지 주소를 바로 붙여넣을 수 있는 게시판, 문서, 메신저에서 사용합니다.'],
-    ['iframe 복사', 'iframe을 넣을 수 있는 커뮤니티, 블로그, 개인 페이지에 재생 가능한 탑스터를 넣을 때 사용합니다.'],
+    ['HTML 복사', '이미지를 클릭하면 재생 페이지로 이동하는 <a><img></a> 형식의 HTML이 필요할 때 사용합니다.'],
     ['미리보기', '공유하기 전에 실제 재생 페이지가 어떻게 보이는지 새 탭에서 확인할 때 사용합니다.'],
 ];
 
@@ -61,11 +61,11 @@ export default function Help() {
                 </section>
 
                 <section className="help-section help-animate">
-                    <p className="help-kicker">Version 1.1</p>
-                    <h2>v1.1 업데이트</h2>
+                    <p className="help-kicker">Version 1.3</p>
+                    <h2>v1.3 업데이트</h2>
                     <div className="help-update-box">
                         <p>공유 방식이 목적별 버튼으로 나뉘었습니다.</p>
-                        <p>이제 iframe, 링크, 이미지 링크, 이미지 저장을 상황에 맞게 바로 선택할 수 있습니다.</p>
+                        <p>HTML 복사는 이미지가 보이고 클릭하면 재생 페이지로 이동하는 &lt;a&gt;&lt;img&gt;&lt;/a&gt; 형식으로 생성됩니다.</p>
                     </div>
                 </section>
 
