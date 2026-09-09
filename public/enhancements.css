@@ -1,0 +1,147 @@
+/* Small additions for playlist import and playback recovery. The Topster grid remains the primary UI. */
+.playlist-import-form {
+    margin-top: 28px;
+    padding: 18px;
+    border: 1px solid #1b1b1b;
+    border-radius: 8px;
+    background: #080808;
+    box-sizing: border-box;
+}
+
+.playlist-import-form > label,
+.playlist-layout-row label {
+    display: block;
+    color: #ddd;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.playlist-import-form input,
+.playlist-import-form select {
+    width: 100%;
+    min-height: 42px;
+    border: 1px solid #292929;
+    border-radius: 6px;
+    background: #111;
+    color: #fff;
+    padding: 0 12px;
+    font: inherit;
+    box-sizing: border-box;
+    outline: none;
+}
+
+.playlist-import-form input:focus,
+.playlist-import-form select:focus {
+    border-color: #555;
+}
+
+.playlist-layout-row {
+    margin-top: 14px;
+}
+
+.playlist-import-button {
+    width: 100%;
+    min-height: 42px;
+    margin-top: 14px;
+    border: 0;
+    border-radius: 6px;
+    background: #fff;
+    color: #000;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.playlist-import-button:disabled {
+    opacity: 0.55;
+    cursor: wait;
+}
+
+.landing-copy .playlist-import-status {
+    margin: 10px 0 0;
+    color: #b8b8b8;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.landing-copy .landing-extension-note {
+    margin: 14px 0 0;
+    color: #777;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.playlist-helper-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: 14px;
+}
+
+.playlist-helper-player {
+    width: 240px;
+    height: 240px;
+    max-width: 100%;
+    background: #000;
+    overflow: hidden;
+}
+
+.playlist-helper-player iframe {
+    width: 240px;
+    height: 240px;
+    max-width: 100%;
+    border: 0;
+}
+
+.playback-status {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 7px;
+    max-width: 100%;
+    padding: 7px 10px;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    background: rgba(10, 10, 10, 0.94);
+    color: #ddd;
+    font-size: 12px;
+    line-height: 1.4;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.playback-status-actions {
+    display: inline-flex;
+    gap: 5px;
+}
+
+.playback-status button {
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    background: #161616;
+    color: #fff;
+    padding: 4px 7px;
+    font: inherit;
+    cursor: pointer;
+}
+
+.playback-status button:hover {
+    border-color: #666;
+}
+
+@media (max-width: 850px) {
+    .landing-state {
+        height: 100dvh;
+        overflow-y: auto;
+    }
+
+    .playlist-import-form {
+        padding: 15px;
+    }
+
+    .playback-status {
+        font-size: 11px;
+    }
+}
