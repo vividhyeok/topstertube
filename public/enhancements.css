@@ -257,3 +257,124 @@
         padding: 15px;
     }
 }
+
+/* Web encoder output actions: mirrors the extension sharing workflow. */
+.web-topster-result {
+    margin-top: 14px;
+    padding: 18px;
+    border: 1px solid #242424;
+    border-radius: 8px;
+    background: #0a0a0a;
+    box-sizing: border-box;
+}
+
+.web-topster-result-heading {
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.landing-copy .web-topster-result-summary,
+.landing-copy .web-topster-result-note {
+    margin: 7px 0 0;
+    color: #888;
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.web-topster-result-label {
+    display: block;
+    margin: 16px 0 8px;
+    color: #ccc;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.web-topster-result-link {
+    width: 100%;
+    min-height: 42px;
+    padding: 0 12px;
+    border: 1px solid #292929;
+    border-radius: 6px;
+    background: #111;
+    color: #ddd;
+    font: inherit;
+    font-size: 13px;
+    box-sizing: border-box;
+    outline: none;
+}
+
+.web-topster-result-link:focus {
+    border-color: #555;
+}
+
+.web-topster-result-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.web-output-primary,
+.web-output-secondary,
+.web-output-reset {
+    min-height: 40px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    box-sizing: border-box;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.web-output-primary,
+.web-output-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 10px;
+}
+
+.web-output-primary {
+    background: #fff;
+    color: #000;
+    border: 1px solid #fff;
+}
+
+.web-output-secondary {
+    background: #151515;
+    color: #eee;
+    border: 1px solid #292929;
+}
+
+.web-output-secondary:hover,
+.web-output-reset:hover {
+    border-color: #4b4b4b;
+}
+
+.web-output-secondary:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.web-output-reset {
+    width: 100%;
+    margin-top: 12px;
+    background: transparent;
+    color: #777;
+    border: 1px solid #1e1e1e;
+}
+
+@media (max-width: 850px), (pointer: coarse) and (hover: none) {
+    .web-topster-result {
+        padding: 15px;
+    }
+
+    .web-topster-result-actions {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .web-output-primary {
+        grid-column: 1 / -1;
+    }
+}
