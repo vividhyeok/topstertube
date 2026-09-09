@@ -5,6 +5,7 @@ export default function Document() {
         <Html lang="ko">
             <Head>
                 <link rel="stylesheet" href="/style.css" />
+                <link rel="stylesheet" href="/enhancements.css" />
             </Head>
             <body>
                 <Main />
