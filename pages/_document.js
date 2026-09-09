@@ -10,6 +10,7 @@ export default function Document() {
             <body>
                 <Main />
                 <NextScript />
+                <script src="/landing-outputs.js" defer />
             </body>
         </Html>
     );
