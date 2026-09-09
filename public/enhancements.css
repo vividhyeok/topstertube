@@ -145,3 +145,115 @@
         font-size: 11px;
     }
 }
+
+/*
+ * Samsung Internet and similar mobile browsers can request a desktop site by
+ * exposing a desktop-sized layout viewport. Width media queries then pick the
+ * desktop Topstertube UI even though the device is still touch-only.
+ *
+ * Keep the phone-shaped Topster experience on touch-only devices regardless
+ * of that virtual viewport width. 100svh deliberately uses the smallest
+ * browser viewport so visible address/navigation bars do not cover controls.
+ */
+@media (pointer: coarse) and (hover: none) {
+    html,
+    body {
+        width: 100%;
+        height: 100svh;
+        max-height: 100svh;
+        overflow: hidden;
+        align-items: stretch;
+        justify-content: flex-start;
+    }
+
+    body {
+        position: relative;
+    }
+
+    .main-container {
+        flex-direction: column;
+        width: 100%;
+        max-width: 100%;
+        height: 100svh;
+        max-height: 100svh;
+        min-height: 0;
+        padding: max(10px, env(safe-area-inset-top)) 5px max(10px, env(safe-area-inset-bottom));
+        gap: 5px;
+        justify-content: flex-start;
+        align-items: center;
+        overflow: hidden;
+    }
+
+    .grid-container {
+        flex: 0 0 auto;
+        width: 100%;
+        max-width: 100%;
+        max-height: none;
+        min-width: 0;
+    }
+
+    .grid-container:not(.classic-layout) {
+        height: auto;
+        aspect-ratio: 1 / 1;
+    }
+
+    .grid-container[data-size="5x5"],
+    .grid-container.classic-layout {
+        max-width: 100%;
+        max-height: none;
+    }
+
+    .list-container {
+        flex: 1 1 auto;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        min-height: 0;
+        max-height: none !important;
+        padding: 10px 10px max(88px, calc(env(safe-area-inset-bottom) + 78px));
+        box-sizing: border-box;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    #track-list li {
+        padding-bottom: 8px;
+        margin-bottom: 8px;
+    }
+
+    .topster-action-stack {
+        position: absolute;
+        left: 50%;
+        bottom: max(10px, env(safe-area-inset-bottom));
+        width: calc(100% - 20px);
+        gap: 5px;
+    }
+
+    .play-help-text,
+    .create-topster-link,
+    .playback-status {
+        font-size: 11px;
+    }
+
+    .play-help-text {
+        padding: 6px 8px;
+    }
+
+    .landing-state {
+        width: 100%;
+        min-height: 100svh;
+        height: 100svh;
+        align-items: flex-start;
+        padding: max(24px, env(safe-area-inset-top)) 16px max(30px, env(safe-area-inset-bottom));
+        overflow-y: auto;
+    }
+
+    .landing-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .playlist-import-form {
+        padding: 15px;
+    }
+}
