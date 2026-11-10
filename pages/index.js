@@ -1,118 +1,28 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import Head from 'next/head';
+import { loadYouTubeApi, fetchTrackMetadata } from '../lib/youtube';
+import Editor from '../components/Editor';
+import SharePanel from '../components/SharePanel';
 import { decodeTopsterSearchParams, encodeTopsterData } from '../lib/topsterPayload';
 
-const chromeStoreUrl = 'https://chromewebstore.google.com/detail/topstertube-%EC%9E%AC%EC%83%9D-%EA%B0%80%EB%8A%A5%ED%95%9C-%ED%83%91%EC%8A%A4%ED%84%B0/nnhcekoanhgdanobfegpjhdlankamgba';
-const YT_API_TIMEOUT_MS = 12000;
-const METADATA_TIMEOUT_MS = 5000;
 const BUFFERING_RECOVERY_MS = 18000;
-const VIDEO_ID_PATTERN = /^[A-Za-z0-9_-]{11}$/;
-
-let ytApiPromise = null;
-function loadYouTubeApi() {
-    if (typeof window === 'undefined') return Promise.reject(new Error('YouTube API is only available in the browser'));
-    if (window.YT?.Player) return Promise.resolve(window.YT);
-    if (ytApiPromise) return ytApiPromise;
-
-    ytApiPromise = new Promise((resolve, reject) => {
-        let settled = false;
-        let pollTimer = null;
-        let timeoutTimer = null;
-        const previousReady = window.onYouTubeIframeAPIReady;
-        let script = null;
-
-        const cleanup = () => {
-            if (pollTimer) clearInterval(pollTimer);
-            if (timeoutTimer) clearTimeout(timeoutTimer);
-        };
-
-        const succeed = () => {
-            if (settled || !window.YT?.Player) return;
-            settled = true;
-            cleanup();
-            resolve(window.YT);
-        };
-
-        const fail = (error) => {
-            if (settled) return;
-            settled = true;
-            cleanup();
-            if (!window.YT?.Player && script?.parentNode) script.parentNode.removeChild(script);
-            reject(error instanceof Error ? error : new Error('YouTube API load failed'));
-        };
-
-        window.onYouTubeIframeAPIReady = () => {
-            try {
-                if (typeof previousReady === 'function') previousReady();
-            } finally {
-                succeed();
-            }
-        };
-
-        script = document.querySelector('script[src="https://www.youtube.com/iframe_api"]');
-        if (!script) {
-            script = document.createElement('script');
-            script.src = 'https://www.youtube.com/iframe_api';
-            script.async = true;
-            document.head.appendChild(script);
-        }
-        script.addEventListener('error', () => fail(new Error('YouTube API network error')), { once: true });
-
-        pollTimer = setInterval(succeed, 100);
-        timeoutTimer = setTimeout(() => fail(new Error('YouTube API load timeout')), YT_API_TIMEOUT_MS);
-    }).catch((error) => {
-        ytApiPromise = null;
-        throw error;
-    });
-
-    return ytApiPromise;
-}
 
 function hasTopsterParams(searchParams) {
     if (searchParams.get('d')) return true;
     return Array.from(searchParams.keys()).some((key) => /^link\d+$/.test(key));
 }
 
-function useUrlSearchParams() {
-    const [searchParams, setSearchParams] = useState(null);
+function useUrlSearchParams(initialPayload) {
+    const [searchParams, setSearchParams] = useState(initialPayload ? new URLSearchParams({ d: initialPayload }) : null);
 
     useEffect(() => {
-        const syncSearchParams = () => setSearchParams(new URLSearchParams(window.location.search));
+        const syncSearchParams = () => setSearchParams(initialPayload ? new URLSearchParams({ d: initialPayload }) : new URLSearchParams(window.location.search));
         syncSearchParams();
         window.addEventListener('popstate', syncSearchParams);
         return () => window.removeEventListener('popstate', syncSearchParams);
-    }, []);
+    }, [initialPayload]);
 
     return searchParams;
-}
-
-function cleanTopicSuffix(value) {
-    return String(value || '').replace(' - Topic', '');
-}
-
-async function fetchTrackMetadata(videoId, externalSignal) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), METADATA_TIMEOUT_MS);
-    const abortFromParent = () => controller.abort();
-    if (externalSignal) externalSignal.addEventListener('abort', abortFromParent, { once: true });
-
-    try {
-        const response = await fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${videoId}`, {
-            signal: controller.signal,
-        });
-        if (!response.ok) throw new Error(`Metadata HTTP ${response.status}`);
-        const data = await response.json();
-
-        return {
-            title: data?.title ? cleanTopicSuffix(data.title) : videoId,
-            author: data?.author_name ? cleanTopicSuffix(data.author_name) : '',
-        };
-    } catch (error) {
-        return { title: videoId, author: '' };
-    } finally {
-        clearTimeout(timeout);
-        if (externalSignal) externalSignal.removeEventListener('abort', abortFromParent);
-    }
 }
 
 async function mapLimit(items, limit, worker) {
@@ -132,15 +42,28 @@ async function mapLimit(items, limit, worker) {
     return results;
 }
 
-function PlayerContent() {
-    const searchParams = useUrlSearchParams();
+function PlayerContent({ initialPayload }) {
+    const searchParams = useUrlSearchParams(initialPayload);
     const hasSharedTopster = searchParams ? hasTopsterParams(searchParams) : null;
+    const editorData = useMemo(() => hasSharedTopster ? decodeTopsterSearchParams(searchParams) : null, [hasSharedTopster, searchParams]);
     const [links, setLinks] = useState([]);
     const [gridConfig, setGridConfig] = useState({ w: 3, h: 3, theme: 'grid' });
     const [activeIdx, setActiveIdx] = useState(null);
     const [gridHeight, setGridHeight] = useState('auto');
     const [metadata, setMetadata] = useState({});
     const [playbackStatus, setPlaybackStatus] = useState(null);
+    const [playing, setPlaying] = useState(false);
+    const [progress, setProgress] = useState({ time: 0, duration: 0 });
+    const [resume, setResume] = useState(null);
+    const [showShare, setShowShare] = useState(false);
+    const [playerAttempt, setPlayerAttempt] = useState(0);
+    const [repeat, setRepeat] = useState(false);
+    const repeatRef = useRef(false);
+    repeatRef.current = repeat;
+    const resumeTimeRef = useRef(null);
+    const dockRef = useRef(null);
+    const failedTracks = useRef(new Set());
+    const payload = encodeTopsterData({ ...gridConfig, links });
 
     const gridRef = useRef(null);
     const cellRefs = useRef([]);
@@ -163,33 +86,90 @@ function PlayerContent() {
     }, []);
 
     const togglePlay = (idx) => {
+        failedTracks.current.delete(idx);
         setPlaybackStatus(null);
-        setActiveIdx((cur) => (cur === idx ? null : idx));
+        if (activeIdxRef.current === idx && playerRef.current) {
+            const player = playerRef.current;
+            if (player.getPlayerState?.() === 1) player.pauseVideo?.();
+            else player.playVideo?.();
+        } else setActiveIdx(idx);
     };
 
     const advanceNext = useCallback(() => {
         const cur = activeIdxRef.current;
         const list = linksRef.current;
-        if (cur === null) return false;
+        if (cur === null) { setActiveIdx(list.findIndex(Boolean) < 0 ? null : list.findIndex(Boolean)); return true; }
         for (let j = cur + 1; j < list.length; j++) {
             if (list[j]) {
                 setActiveIdx(j);
                 return true;
             }
         }
-        setActiveIdx(null);
+        if (repeatRef.current && list.some(Boolean)) {
+            const first = list.findIndex(Boolean);
+            if (first === cur) playerRef.current?.seekTo?.(list[first].t, true);
+            else setActiveIdx(first);
+        } else setActiveIdx(null);
         return false;
     }, []);
+
+    const previous = useCallback(() => {
+        const current = activeIdxRef.current;
+        if (current === null) return;
+        for (let i = current - 1; i >= 0; i--) if (linksRef.current[i]) { setActiveIdx(i); return; }
+        playerRef.current?.seekTo?.(linksRef.current[current].t, true);
+    }, []);
+
+    useEffect(() => {
+        if (!links.some(Boolean)) return;
+        try {
+            const saved = JSON.parse(sessionStorage.getItem('topstertube:playback') || 'null');
+            if (saved?.payload === payload && links[saved.index] && Number.isFinite(saved.time)) setResume(saved);
+        } catch { /* Storage is optional. */ }
+    }, [links, payload]);
+
+    useEffect(() => {
+        const sample = () => {
+            const player = playerRef.current;
+            if (!player?.getCurrentTime || activeIdxRef.current === null) return;
+            const time = player.getCurrentTime() || 0;
+            const duration = player.getDuration?.() || 0;
+            setProgress({ time, duration });
+            try { sessionStorage.setItem('topstertube:playback', JSON.stringify({ payload, index: activeIdxRef.current, time })); } catch { /* Storage is optional. */ }
+        };
+        const timer = setInterval(() => { if (!document.hidden) sample(); }, 1000);
+        const visibility = () => { sample(); clearBufferTimer(); };
+        document.addEventListener('visibilitychange', visibility);
+        window.addEventListener('pagehide', sample);
+        return () => { clearInterval(timer); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('pagehide', sample); };
+    }, [payload, clearBufferTimer]);
+
+    useEffect(() => {
+        if (!('mediaSession' in navigator)) return;
+        const session = navigator.mediaSession;
+        const link = links[activeIdx];
+        if (link && typeof MediaMetadata !== 'undefined') session.metadata = new MediaMetadata({
+            title: metadata[link.id]?.title || link.id, artist: metadata[link.id]?.author || 'TopsterTube',
+            artwork: [{ src: `https://img.youtube.com/vi/${link.id}/hqdefault.jpg`, sizes: '480x360', type: 'image/jpeg' }],
+        });
+        else session.metadata = null;
+        session.playbackState = activeIdx === null ? 'none' : playing ? 'playing' : 'paused';
+        const actions = { play: () => playerRef.current?.playVideo?.(), pause: () => playerRef.current?.pauseVideo?.(), previoustrack: previous, nexttrack: advanceNext, seekto: (event) => playerRef.current?.seekTo?.(event.seekTime, true) };
+        for (const [action, handler] of Object.entries(actions)) { try { session.setActionHandler(action, handler); } catch { /* Browser-dependent. */ } }
+        return () => { for (const action of Object.keys(actions)) { try { session.setActionHandler(action, null); } catch {} } session.metadata = null; session.playbackState = 'none'; };
+    }, [activeIdx, links, metadata, playing, previous, advanceNext]);
 
     const retryCurrent = useCallback(() => {
         const idx = activeIdxRef.current;
         const link = idx === null ? null : linksRef.current[idx];
         const player = playerRef.current;
-        if (!link || !player?.loadVideoById) return;
+        if (!link) return;
+        if (!player?.loadVideoById) { setPlayerAttempt(value => value + 1); return; }
+        failedTracks.current.delete(idx);
         clearBufferTimer();
         setPlaybackStatus(null);
         try {
-            player.loadVideoById({ videoId: link.id, startSeconds: link.t });
+            player.loadVideoById({ videoId: link.id, startSeconds: player.getCurrentTime?.() || link.t });
         } catch (error) {
             setPlaybackStatus({ message: '이 곡을 다시 불러오지 못했습니다.', canSkip: true });
         }
@@ -208,7 +188,13 @@ function PlayerContent() {
         const cell = cellRefs.current[idx];
         if (!cell) return;
         const gridRect = grid.getBoundingClientRect();
-        const cellRect = cell.getBoundingClientRect();
+        let cellRect = cell.getBoundingClientRect();
+        const dock = dockRef.current;
+        const useDock = cellRect.width < 200 || cellRect.height < 200;
+        if (dock) {
+            dock.hidden = !useDock;
+            if (useDock) cellRect = dock.getBoundingClientRect();
+        }
 
         overlay.style.display = 'block';
         overlay.style.left = `${cellRect.left - gridRect.left + grid.scrollLeft}px`;
@@ -222,16 +208,26 @@ function PlayerContent() {
         const code = Number(event?.data);
         const unavailable = [100, 101, 150].includes(code);
         const failedIdx = activeIdxRef.current;
+        if (code === 153) {
+            setPlaybackStatus({ message: 'YouTube에서 이 브라우저의 재생을 허용하지 않았습니다. 아래 YouTube 링크로 열어주세요.', canRetry: true });
+            return;
+        }
+        failedTracks.current.add(failedIdx);
         setPlaybackStatus({
             message: unavailable ? '재생할 수 없는 영상이라 다음 곡으로 넘어갑니다.' : 'YouTube 재생 오류가 발생해 다음 곡으로 넘어갑니다.',
         });
         window.setTimeout(() => {
-            if (activeIdxRef.current === failedIdx) advanceNext();
+            if (activeIdxRef.current !== failedIdx) return;
+            const list = linksRef.current;
+            const next = list.findIndex((link, index) => link && index > failedIdx && !failedTracks.current.has(index));
+            if (next >= 0) setActiveIdx(next);
+            else setPlaybackStatus({ message: '다음에 재생할 수 있는 곡이 없습니다. 다른 곡을 선택하거나 YouTube에서 열어주세요.', canRetry: true });
         }, 350);
-    }, [advanceNext, clearBufferTimer]);
+    }, [clearBufferTimer]);
 
     const handlePlayerStateChange = useCallback((event) => {
         const state = Number(event?.data);
+        setPlaying(state === 1);
         if (state === 0) {
             clearBufferTimer();
             setPlaybackStatus(null);
@@ -252,6 +248,7 @@ function PlayerContent() {
 
         clearBufferTimer();
         bufferingTimerRef.current = window.setTimeout(() => {
+            if (document.hidden) return;
             const idx = activeIdxRef.current;
             const player = playerRef.current;
             const link = idx === null ? null : linksRef.current[idx];
@@ -266,7 +263,7 @@ function PlayerContent() {
                 bufferingRetryRef.current[idx] = retryCount + 1;
                 setPlaybackStatus({ message: '재생이 지연되어 한 번 다시 연결하고 있습니다.' });
                 try {
-                    player.loadVideoById({ videoId: link.id, startSeconds: link.t });
+                    player.loadVideoById({ videoId: link.id, startSeconds: player.getCurrentTime?.() || link.t });
                 } catch (error) {
                     setPlaybackStatus({ message: '재생을 다시 연결하지 못했습니다.', canRetry: true, canSkip: true });
                 }
@@ -325,6 +322,8 @@ function PlayerContent() {
         if (activeIdx !== null) bufferingRetryRef.current[activeIdx] = 0;
 
         if (activeIdx === null) {
+            setPlaying(false);
+            if (dockRef.current) dockRef.current.hidden = true;
             positionOverlay();
             setPlaybackStatus(null);
             if (playerRef.current?.stopVideo) {
@@ -335,6 +334,9 @@ function PlayerContent() {
 
         const link = links[activeIdx];
         if (!link) return undefined;
+        const startSeconds = resumeTimeRef.current ?? link.t;
+        resumeTimeRef.current = null;
+        setProgress({ time: startSeconds, duration: 0 });
 
         let cancelled = false;
         positionOverlay();
@@ -356,12 +358,16 @@ function PlayerContent() {
                         height: '100%',
                         videoId: link.id,
                         playerVars: {
-                            start: link.t,
+                            start: startSeconds,
                             autoplay: 1,
                             playsinline: 1,
+                            origin: window.location.origin,
                         },
                         events: {
                             onReady: (e) => {
+                                const latest = linksRef.current[activeIdxRef.current];
+                                if (!latest) { e.target.stopVideo(); return; }
+                                if (latest.id !== link.id) { e.target.loadVideoById({ videoId: latest.id, startSeconds: latest.t }); return; }
                                 try { e.target.playVideo(); } catch (error) {
                                     setPlaybackStatus({ message: '재생을 시작하려면 한 번 더 눌러주세요.', canRetry: true });
                                 }
@@ -378,7 +384,7 @@ function PlayerContent() {
                 }
             } else {
                 try {
-                    playerRef.current.loadVideoById({ videoId: link.id, startSeconds: link.t });
+                    playerRef.current.loadVideoById({ videoId: link.id, startSeconds });
                 } catch (error) {
                     setPlaybackStatus({ message: '다음 곡을 불러오지 못했습니다.', canRetry: true, canSkip: true });
                 }
@@ -388,7 +394,7 @@ function PlayerContent() {
         });
 
         return () => { cancelled = true; };
-    }, [activeIdx, links, positionOverlay, handlePlayerStateChange, handlePlaybackError, clearBufferTimer]);
+    }, [activeIdx, links, positionOverlay, handlePlayerStateChange, handlePlaybackError, clearBufferTimer, playerAttempt]);
 
     useEffect(() => {
         const gridEl = gridRef.current;
@@ -422,10 +428,12 @@ function PlayerContent() {
     }, [clearBufferTimer]);
 
     if (searchParams === null) return <BootState />;
-    if (!hasSharedTopster) return <LandingState />;
+    if (!hasSharedTopster || searchParams.has('edit')) return <Editor initialData={editorData} />;
 
     return (
         <>
+            <header className="player-header"><a className="wordmark" href="/">TOPSTER<span>TUBE</span><i /></a><div className="button-row"><a href={`/?edit=1&d=${encodeURIComponent(payload)}`}>편집</a><button onClick={() => setShowShare(!showShare)} aria-expanded={showShare}>공유 / NFC</button></div></header>
+            {showShare && <div className="player-share"><SharePanel payload={payload} /></div>}
             <div className="main-container">
                 <div
                     ref={gridRef}
@@ -445,6 +453,7 @@ function PlayerContent() {
                             metadata={link ? metadata[link.id] : null}
                             index={i}
                             theme={gridConfig.theme}
+                            isActive={activeIdx === i}
                             onToggle={() => togglePlay(i)}
                             cellRef={(el) => { cellRefs.current[i] = el; }}
                         />
@@ -466,6 +475,8 @@ function PlayerContent() {
                     </div>
                 </div>
                 <div className="list-container" style={{ maxHeight: gridHeight }}>
+                    <div ref={dockRef} className="video-dock" hidden />
+                    <div className="section-heading"><h2>트랙 리스트</h2><span className="badge">{links.filter(Boolean).length} TRACKS</span></div>
                     <ol id="track-list">
                         {links.map((link, i) => (
                             <ListItem
@@ -494,15 +505,22 @@ function PlayerContent() {
                 <p className="play-help-text">
                     곡 제목이나 표지를 클릭해 음악을 들어보세요. 끝나면 다음 곡으로 자동 재생됩니다.
                 </p>
-                <a className="create-topster-link" href="/help">직접 탑스터 만들기</a>
+                <p className="play-help-text">화면 잠금·다른 앱 전환 시 재생이 중단될 수 있어요. 돌아오면 재생 버튼으로 이어 들으세요.</p>
             </div>
+            <section className="transport" aria-label="재생 컨트롤">
+                <div className="now-playing"><span className="eyebrow">{playing ? 'NOW PLAYING' : 'READY TO PLAY'}</span><strong>{activeIdx !== null ? metadata[links[activeIdx]?.id]?.title || links[activeIdx]?.id : '표지를 누르고 취향을 들어보세요'}</strong></div>
+                <div className="transport-buttons"><button onClick={previous} disabled={activeIdx === null} aria-label="이전 곡">⏮</button><button className="primary" aria-label={playing ? '일시정지' : '재생'} disabled={!links.some(Boolean)} onClick={() => activeIdx === null ? setActiveIdx(links.findIndex(Boolean)) : togglePlay(activeIdx)}>{playing ? 'Ⅱ' : '▶'}</button><button onClick={advanceNext} disabled={!links.some(Boolean)} aria-label="다음 곡">⏭</button><button aria-pressed={repeat} onClick={() => setRepeat(!repeat)} aria-label="전체 반복">↻</button></div>
+                <label className="seek-control"><span className="sr-only">재생 위치</span><input aria-label="재생 위치" type="range" min="0" max={progress.duration || 1} value={Math.min(progress.time, progress.duration || 1)} disabled={!progress.duration || activeIdx === null} onChange={e => { const time = Number(e.target.value); playerRef.current?.seekTo?.(time, true); setProgress(v => ({ ...v, time })); }} /><span>{Math.floor(progress.time / 60)}:{String(Math.floor(progress.time % 60)).padStart(2, '0')}</span></label>
+                {resume && activeIdx === null && <button onClick={() => { resumeTimeRef.current = resume.time; setActiveIdx(resume.index); setResume(null); }}>이어듣기</button>}
+                {activeIdx !== null && <a className="youtube-link" href={`https://www.youtube.com/watch?v=${links[activeIdx].id}&t=${Math.floor(progress.time)}`} target="_blank" rel="noopener noreferrer">YouTube ↗</a>}
+            </section>
         </>
     );
 }
 
-function GridItem({ link, metadata, index, theme, onToggle, cellRef }) {
+function GridItem({ link, metadata, index, theme, onToggle, cellRef, isActive }) {
     const getClassName = () => {
-        let base = 'grid-item';
+        let base = `grid-item${isActive ? ' active-cover' : ''}`;
         if (theme === 'classic') {
             if (index < 10) base += ' large';
             else if (index < 22) base += ' medium';
@@ -518,9 +536,11 @@ function GridItem({ link, metadata, index, theme, onToggle, cellRef }) {
     const title = metadata?.title || link.id;
 
     return (
-        <div ref={cellRef} className={getClassName()} onClick={onToggle}>
+        <div ref={cellRef} className={getClassName()} onClick={onToggle} role="button" tabIndex={0} aria-label={`${title} 재생`} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}>
             <img
                 src={`https://img.youtube.com/vi/${link.id}/mqdefault.jpg`}
+                loading="lazy"
+                decoding="async"
                 alt={title}
                 title={title}
                 onError={(e) => {
@@ -557,217 +577,16 @@ function BootState() {
     return <main className="boot-state" aria-hidden="true" />;
 }
 
-function parsePlaylistUrl(input) {
-    try {
-        const url = new URL(String(input || '').trim());
-        const hostname = url.hostname.toLowerCase();
-        const isYoutube = hostname === 'youtube.com' || hostname.endsWith('.youtube.com') || hostname === 'youtu.be';
-        if (!isYoutube) return null;
-        const playlistId = url.searchParams.get('list');
-        if (!playlistId || !/^[A-Za-z0-9_-]{10,}$/.test(playlistId)) return null;
-        return playlistId;
-    } catch (error) {
-        return null;
-    }
-}
-
-function getImportLayout(value) {
-    if (value === 'classic') return { theme: 'classic', w: 3, h: 3, total: 42 };
-    const match = /^(2|3|4|5)x\1$/.exec(value || '');
-    const size = match ? parseInt(match[1], 10) : 3;
-    return { theme: 'grid', w: size, h: size, total: size * size };
-}
-
-function LandingState() {
-    const [playlistUrl, setPlaylistUrl] = useState('');
-    const [layoutValue, setLayoutValue] = useState('3x3');
-    const [importStatus, setImportStatus] = useState('');
-    const [isImporting, setIsImporting] = useState(false);
-    const helperSlotRef = useRef(null);
-    const helperPlayerRef = useRef(null);
-
-    useEffect(() => () => {
-        if (helperPlayerRef.current?.destroy) {
-            try { helperPlayerRef.current.destroy(); } catch (error) { /* noop */ }
-        }
-    }, []);
-
-    const importPlaylist = async (event) => {
-        event.preventDefault();
-        if (isImporting) return;
-
-        const playlistId = parsePlaylistUrl(playlistUrl);
-        if (!playlistId) {
-            setImportStatus('올바른 YouTube 플레이리스트 링크를 입력해주세요.');
-            return;
-        }
-
-        setIsImporting(true);
-        setImportStatus('플레이리스트를 불러오는 중입니다.');
-
-        try {
-            const YT = await loadYouTubeApi();
-            await new Promise((resolve) => window.requestAnimationFrame(resolve));
-            const slot = helperSlotRef.current;
-            if (!slot) throw new Error('Playlist helper is unavailable');
-
-            if (helperPlayerRef.current?.destroy) {
-                try { helperPlayerRef.current.destroy(); } catch (error) { /* noop */ }
-            }
-            slot.textContent = '';
-            const host = document.createElement('div');
-            slot.appendChild(host);
-
-            const videoIds = await new Promise((resolve, reject) => {
-                let settled = false;
-                let pollTimer = null;
-                let timeoutTimer = null;
-
-                const cleanup = () => {
-                    if (pollTimer) clearInterval(pollTimer);
-                    if (timeoutTimer) clearTimeout(timeoutTimer);
-                };
-
-                const finish = (ids) => {
-                    if (settled) return;
-                    settled = true;
-                    cleanup();
-                    resolve(ids);
-                };
-
-                const fail = (message) => {
-                    if (settled) return;
-                    settled = true;
-                    cleanup();
-                    reject(new Error(message));
-                };
-
-                try {
-                    helperPlayerRef.current = new YT.Player(host, {
-                        width: '240',
-                        height: '240',
-                        playerVars: { playsinline: 1 },
-                        events: {
-                            onReady: (e) => {
-                                try {
-                                    e.target.cuePlaylist({ listType: 'playlist', list: playlistId, index: 0, startSeconds: 0 });
-                                } catch (error) {
-                                    fail('플레이리스트를 불러올 수 없습니다.');
-                                }
-                            },
-                        },
-                    });
-                } catch (error) {
-                    fail('YouTube 플레이어를 만들 수 없습니다.');
-                    return;
-                }
-
-                const readPlaylist = () => {
-                    const player = helperPlayerRef.current;
-                    if (!player?.getPlaylist) return;
-                    try {
-                        const ids = player.getPlaylist();
-                        const validIds = Array.isArray(ids) ? ids.filter((id) => VIDEO_ID_PATTERN.test(String(id || ''))) : [];
-                        if (validIds.length > 0) finish(validIds);
-                    } catch (error) {
-                        // The playlist is not ready yet; polling continues until timeout.
-                    }
-                };
-
-                pollTimer = window.setInterval(readPlaylist, 250);
-                timeoutTimer = window.setTimeout(() => fail('플레이리스트를 불러오지 못했습니다. 공개 또는 링크 공개 상태인지 확인해주세요.'), 15000);
-            });
-
-            const layout = getImportLayout(layoutValue);
-            const selectedIds = videoIds.slice(0, layout.total);
-            const links = new Array(layout.total).fill(null);
-            selectedIds.forEach((id, index) => {
-                links[index] = { id, t: 0 };
-            });
-
-            const payload = encodeTopsterData({ links, theme: layout.theme, w: layout.w, h: layout.h });
-            window.location.assign(`/?d=${encodeURIComponent(payload)}`);
-        } catch (error) {
-            setImportStatus(error?.message || '플레이리스트를 불러오지 못했습니다.');
-            setIsImporting(false);
-            if (helperPlayerRef.current?.destroy) {
-                try { helperPlayerRef.current.destroy(); } catch (destroyError) { /* noop */ }
-            }
-            helperPlayerRef.current = null;
-            if (helperSlotRef.current) helperSlotRef.current.textContent = '';
-        }
-    };
-
-    return (
-        <main className="landing-state">
-            <section className="landing-copy">
-                <p className="landing-kicker">Topstertube</p>
-                <h1>좋아하는 음악을 재생 가능한 탑스터로 만들어보세요.</h1>
-                <p>
-                    YouTube 또는 YouTube Music 플레이리스트 링크 하나로 웹에서 바로 만들 수 있습니다.
-                    공유받은 사람은 설치 없이 탑스터의 커버를 눌러 음악을 감상합니다.
-                </p>
-
-                <form className="playlist-import-form" onSubmit={importPlaylist}>
-                    <label htmlFor="playlist-url">YouTube 플레이리스트</label>
-                    <input
-                        id="playlist-url"
-                        type="url"
-                        value={playlistUrl}
-                        onChange={(e) => setPlaylistUrl(e.target.value)}
-                        placeholder="https://www.youtube.com/playlist?list=..."
-                        disabled={isImporting}
-                    />
-                    <div className="playlist-layout-row">
-                        <label htmlFor="playlist-layout">레이아웃</label>
-                        <select
-                            id="playlist-layout"
-                            value={layoutValue}
-                            onChange={(e) => setLayoutValue(e.target.value)}
-                            disabled={isImporting}
-                        >
-                            <option value="2x2">2 x 2</option>
-                            <option value="3x3">3 x 3</option>
-                            <option value="4x4">4 x 4</option>
-                            <option value="5x5">5 x 5</option>
-                            <option value="classic">Classic 42</option>
-                        </select>
-                    </div>
-                    <button className="playlist-import-button" type="submit" disabled={isImporting}>
-                        {isImporting ? '불러오는 중...' : 'Topster 만들기'}
-                    </button>
-                    {importStatus && <p className="playlist-import-status" role="status">{importStatus}</p>}
-                    {isImporting && (
-                        <div className="playlist-helper-wrap" aria-label="YouTube 플레이리스트 불러오기">
-                            <div ref={helperSlotRef} className="playlist-helper-player" />
-                        </div>
-                    )}
-                </form>
-
-                <p className="landing-extension-note">
-                    웹에서는 각 곡을 처음부터 재생합니다. 시작 구간까지 지정하려면 Chrome 확장 프로그램을 사용하세요.
-                </p>
-                <div className="landing-actions">
-                    <a className="landing-primary-link" href={chromeStoreUrl} target="_blank" rel="noopener noreferrer">
-                        확장 프로그램 설치
-                    </a>
-                    <a className="landing-secondary-link" href="/help">사용법 보기</a>
-                </div>
-            </section>
-        </main>
-    );
-}
-
-export default function Home() {
+export default function Home({ initialPayload }) {
     return (
         <>
             <Head>
                 <title>Topstertube - 재생 가능한 탑스터</title>
-                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
                 <meta name="description" content="유튜브 음악으로 만드는 나만의 재생 가능한 탑스터" />
                 <link rel="icon" href="/favicon.ico" />
             </Head>
-            <PlayerContent />
+            <PlayerContent initialPayload={initialPayload} />
         </>
     );
 }

@@ -6,16 +6,23 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint pages components lib tests",
+    "test": "playwright test"
   },
   "dependencies": {
-    "next": "14.2.5",
+    "@vercel/blob": "^2.9.0",
+    "next": "^15.5.29",
     "react": "^18",
     "react-dom": "^18",
-    "sharp": "^0.33"
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "eslint": "^8",
-    "eslint-config-next": "14.2.5"
+    "eslint-config-next": "^15.5.29"
+  },
+  "overrides": {
+    "postcss": "^8.5.32",
+    "zod": "^4.6.7"
   }
 }

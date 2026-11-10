@@ -5,3 +5,7 @@ build
 .env*.local
 .DS_Store
 *.log
+.vercel
+test-results
+playwright-report
+artifacts

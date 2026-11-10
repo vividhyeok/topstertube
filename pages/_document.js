@@ -4,13 +4,11 @@ export default function Document() {
     return (
         <Html lang="ko">
             <Head>
-                <link rel="stylesheet" href="/style.css" />
-                <link rel="stylesheet" href="/enhancements.css" />
+                <meta name="theme-color" content="#111410" />
             </Head>
             <body>
                 <Main />
                 <NextScript />
-                <script src="/landing-outputs.js" defer />
             </body>
         </Html>
     );
